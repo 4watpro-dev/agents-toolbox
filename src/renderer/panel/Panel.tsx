@@ -2,6 +2,8 @@ import { motion } from 'motion/react'
 import { useEffect, useState } from 'react'
 import type { Agent } from '../../shared/agent'
 import type { Corner, PanelState } from '../../shared/ipc'
+import { AgentDetails } from './AgentDetails'
+import { AgentSwitcher } from './AgentSwitcher'
 import { ChatView } from './chat/ChatView'
 import { Gallery } from './Gallery'
 import { SettingsView } from './SettingsView'
@@ -18,16 +20,19 @@ const TRANSFORM_ORIGIN: Record<Corner, string> = {
 type View =
   | { name: 'gallery' }
   | { name: 'wizard'; agent: Agent | null }
-  | { name: 'agent'; agentId: string }
+  | { name: 'agent'; agentId: string; conversationId: string }
+  | { name: 'details'; agentId: string; conversationId: string }
   | { name: 'settings'; returnTo: View }
 
 export function Panel(): React.JSX.Element {
   const [state, setState] = useState<PanelState>({ open: false, corner: 'bottom-right', requestedAt: 0 })
   const [view, setView] = useState<View>({ name: 'gallery' })
   const { agents, error, save, remove, setFavorite } = useAgents()
-  const openSettings = (): void => setView((returnTo) => ({ name: 'settings', returnTo }))
+  const openSettings = (): void =>
+    setView((current) => (current.name === 'settings' ? current : { name: 'settings', returnTo: current }))
 
   useEffect(() => window.toolbox.panel.onState(setState), [])
+  useEffect(() => window.toolbox.panel.onNavigate(openSettings), [])
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
@@ -48,12 +53,15 @@ export function Panel(): React.JSX.Element {
     return () => cancelAnimationFrame(frame)
   }, [state])
 
-  function openAgent(agent: Agent): void {
+  /** Rouvre la dernière conversation de l'agent, ou en commence une nouvelle. */
+  async function openAgent(agent: Agent): Promise<void> {
     void window.toolbox.agents.markUsed(agent.id)
-    setView({ name: 'agent', agentId: agent.id })
+    const conversations = await window.toolbox.conversations.list(agent.id)
+    setView({ name: 'agent', agentId: agent.id, conversationId: conversations[0]?.id ?? crypto.randomUUID() })
   }
 
-  const current = view.name === 'agent' ? agents.find((agent) => agent.id === view.agentId) : undefined
+  const conversationAgent =
+    view.name === 'agent' || view.name === 'details' ? agents.find((agent) => agent.id === view.agentId) : undefined
 
   return (
     <motion.main
@@ -82,21 +90,35 @@ export function Panel(): React.JSX.Element {
             setView({ name: 'gallery' })
           }}
         />
-      ) : current ? (
+      ) : view.name === 'details' && conversationAgent ? (
+        <AgentDetails
+          agent={conversationAgent}
+          currentConversationId={view.conversationId}
+          onBack={() => setView({ ...view, name: 'agent' })}
+          onOpenConversation={(conversationId) => setView({ name: 'agent', agentId: view.agentId, conversationId })}
+          onNewConversation={() =>
+            setView({ name: 'agent', agentId: view.agentId, conversationId: crypto.randomUUID() })
+          }
+        />
+      ) : view.name === 'agent' && conversationAgent ? (
         <ChatView
-          sessionId={current.id}
-          agent={current}
+          sessionId={view.conversationId}
+          agent={conversationAgent}
+          agentId={conversationAgent.id}
           panelOpen={state.open}
           backLabel="Retour à la galerie"
           onBack={() => setView({ name: 'gallery' })}
-          onEdit={() => setView({ name: 'wizard', agent: current })}
+          onNew={() => setView({ ...view, conversationId: crypto.randomUUID() })}
+          onDetails={() => setView({ ...view, name: 'details' })}
+          onEdit={() => setView({ name: 'wizard', agent: conversationAgent })}
           onOpenSettings={openSettings}
+          switcher={<AgentSwitcher agent={conversationAgent} agents={agents} onSwitch={(agent) => void openAgent(agent)} />}
         />
       ) : (
         <Gallery
           agents={agents}
           panelOpen={state.open}
-          onOpen={openAgent}
+          onOpen={(agent) => void openAgent(agent)}
           onOpenSettings={openSettings}
           onCreate={() => setView({ name: 'wizard', agent: null })}
           onEdit={(agent) => setView({ name: 'wizard', agent })}

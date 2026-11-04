@@ -689,6 +689,206 @@ textarea.input {
   flex: none;
 }
 
+.chat-remembered {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-size: 12px;
+}
+
+.chat-remembered .button {
+  flex: none;
+  padding: 2px 8px;
+  font-size: 11.5px;
+}
+
+/* Changement d'agent */
+.switcher {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+.switcher-button {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  padding: 3px 5px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.switcher-button:hover:not(:disabled) {
+  background: var(--surface-2);
+}
+
+.switcher-button:disabled {
+  cursor: default;
+}
+
+.switcher-name {
+  display: block;
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.switcher-specialty {
+  display: block;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 11.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.switcher-backdrop {
+  position: fixed;
+  z-index: 3;
+  inset: 0;
+}
+
+.switcher-list {
+  position: absolute;
+  z-index: 4;
+  top: 100%;
+  left: 0;
+  width: 230px;
+  max-height: 260px;
+  margin: 2px 0 0;
+  overflow-y: auto;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: 0 3px 10px rgb(16 24 40 / 18%);
+  list-style: none;
+}
+
+.switcher-list button {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  padding: 4px 6px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.switcher-list button > span {
+  min-width: 0;
+}
+
+.switcher-list button:hover {
+  background: var(--surface-2);
+}
+
+.switcher-list .switcher-name {
+  font-size: 13px;
+}
+
+/* Historique et mémoire */
+.section-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.section-title .button {
+  padding: 3px 9px;
+  font-size: 12px;
+}
+
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.history-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 40px;
+}
+
+.history-item .settings-confirm {
+  width: 100%;
+  font-size: 12px;
+}
+
+.history-item .settings-confirm .button {
+  padding: 3px 7px;
+  font-size: 12px;
+}
+
+.history-open {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.history-open:hover {
+  background: var(--surface-2);
+}
+
+.history-open[aria-current='true'] {
+  border-color: var(--accent);
+}
+
+.history-title {
+  overflow: hidden;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.memory-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.settings-check {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  cursor: pointer;
+}
+
+.shortcut-value {
+  font-weight: 500;
+}
+
 /* Réglages */
 .settings-section {
   display: flex;

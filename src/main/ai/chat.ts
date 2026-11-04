@@ -1,8 +1,8 @@
 import Anthropic from '@anthropic-ai/sdk'
 import type { AgentDraft } from '../../shared/agent'
 import type { ChatEvent } from '../../shared/chat'
-import { createMoodParser } from '../../shared/moodParser'
-import { buildSystemPrompt } from '../../shared/systemPrompt'
+import { createReplyParser } from '../../shared/replyParser'
+import type { TurnContext } from './claudeCodeProtocol'
 import { getClient } from './client'
 import { classifyError, MISSING_KEY, REFUSAL } from './errors'
 import { toHistoryContent } from './history'
@@ -21,7 +21,13 @@ function fallbackParams(model: string): { betas: string[]; fallbacks: 'default' 
   return model.startsWith('claude-haiku') ? {} : { betas: [FALLBACK_BETA], fallbacks: 'default' }
 }
 
-export async function sendMessage(sessionId: string, agent: AgentDraft, text: string, emit: Emit): Promise<void> {
+export async function sendMessage(
+  sessionId: string,
+  agent: AgentDraft,
+  text: string,
+  emit: Emit,
+  context: TurnContext
+): Promise<void> {
   if (activeStreams.has(sessionId)) return
 
   const client = getClient()
@@ -30,15 +36,17 @@ export async function sendMessage(sessionId: string, agent: AgentDraft, text: st
     return
   }
 
-  const history = histories.get(sessionId) ?? []
+  // Après une relance, on repart du texte conservé : les blocs de réflexion ne sont pas enregistrés.
+  const history: MessageParam[] =
+    histories.get(sessionId) ?? context.turns.map((turn) => ({ role: turn.role, content: turn.text }))
   const userMessage: MessageParam = { role: 'user', content: text }
-  const parser = createMoodParser()
+  const parser = createReplyParser()
   let visibleText = ''
 
   const stream = client.beta.messages.stream({
     model: agent.model,
     max_tokens: MAX_TOKENS,
-    system: buildSystemPrompt(agent),
+    system: context.systemPrompt,
     messages: [...history, userMessage],
     output_config: { effort: agent.effort },
     cache_control: { type: 'ephemeral' },
@@ -64,14 +72,14 @@ export async function sendMessage(sessionId: string, agent: AgentDraft, text: st
       return
     }
 
-    const { text: rest, mood } = parser.finish()
+    const { text: rest, mood, facts } = parser.finish()
     if (rest) emit({ sessionId, type: 'delta', text: rest })
     histories.set(sessionId, [
       ...history,
       userMessage,
       { role: 'assistant', content: toHistoryContent(message.content) }
     ])
-    emit({ sessionId, type: 'done', mood, truncated: message.stop_reason === 'max_tokens' })
+    emit({ sessionId, type: 'done', mood, truncated: message.stop_reason === 'max_tokens', facts })
   } catch (error) {
     if (error instanceof Anthropic.APIUserAbortError) {
       // Réponse interrompue : on garde ce qui a été affiché pour que la suite ait le contexte.
@@ -94,6 +102,12 @@ export async function sendMessage(sessionId: string, agent: AgentDraft, text: st
 
 export function stopMessage(sessionId: string): void {
   activeStreams.get(sessionId)?.abort()
+}
+
+export function forgetApiSessions(): void {
+  for (const sessionId of histories.keys()) {
+    if (!activeStreams.has(sessionId)) histories.delete(sessionId)
+  }
 }
 
 export function resetSession(sessionId: string): void {

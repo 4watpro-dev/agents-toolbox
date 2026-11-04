@@ -93,8 +93,18 @@ const MOOD_INSTRUCTIONS = section("Ton humeur à l'écran", [
   "Elle est retirée avant l'affichage : n'en parle jamais."
 ])
 
-/** Prompt réellement envoyé au modèle : texte de l'agent, faits retenus, consigne d'humeur. */
-export function buildSystemPrompt(agent: AgentDraft, facts: string[] = []): string {
+const MEMORY_INSTRUCTIONS = section('Ta mémoire', [
+  "Quand la personne te donne une information durable sur elle, utile pour vos prochaines conversations (son métier, une préférence, un objectif), retiens-la : ajoute une balise par fait, avant celle de ton humeur, comme [remember:Travaille à Brest]. Écris une phrase courte, sans crochets.",
+  "Sois sélectif : rien de passager, et jamais de mot de passe, de donnée bancaire ou d'information de santé. Si la personne te demande d'oublier quelque chose, dis-lui qu'elle peut le retirer dans ta fiche, sous Mémoire.",
+  "La balise est retirée avant l'affichage et l'app signale elle-même ce que tu retiens : n'en parle pas."
+])
+
+/** Prompt réellement envoyé au modèle : texte de l'agent, faits retenus, consignes des balises. */
+export function buildSystemPrompt(
+  agent: AgentDraft,
+  facts: string[] = [],
+  { remember = false }: { remember?: boolean } = {}
+): string {
   const parts = [agent.systemPromptOverride ?? composePrompt(agent)]
   if (facts.length > 0) {
     parts.push(
@@ -111,6 +121,7 @@ export function buildSystemPrompt(agent: AgentDraft, facts: string[] = []): stri
       ])
     )
   }
+  if (remember) parts.push(MEMORY_INSTRUCTIONS)
   parts.push(MOOD_INSTRUCTIONS)
   return parts.join('\n\n')
 }

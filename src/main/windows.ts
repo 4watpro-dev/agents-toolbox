@@ -121,6 +121,11 @@ export function openPanel(requestedAt = Date.now()): void {
   panel.focus()
 }
 
+export function openSettingsInPanel(): void {
+  panel.webContents.send(IPC.panelNavigate, 'settings')
+  openPanel()
+}
+
 export function closePanel(): void {
   if (!panelOpen) return
   panelOpen = false

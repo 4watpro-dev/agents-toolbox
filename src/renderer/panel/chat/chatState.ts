@@ -1,6 +1,7 @@
 import type { AvatarState } from '../../../shared/avatar'
 import type { ChatEvent, ChatFailure } from '../../../shared/chat'
-import type { Mood } from '../../../shared/moodParser'
+import type { Turn } from '../../../shared/conversation'
+import type { Mood } from '../../../shared/replyParser'
 
 export interface ChatMessage {
   id: number
@@ -14,6 +15,8 @@ export interface ChatState {
   mood: AvatarState
   notice: string | null
   failure: (ChatFailure & { retryText: string }) | null
+  /** Faits retenus au dernier tour, signalés dans le chat avec la possibilité de les retirer. */
+  remembered: string[]
   nextId: number
 }
 
@@ -23,7 +26,21 @@ export const EMPTY_CHAT: ChatState = {
   mood: 'idle',
   notice: null,
   failure: null,
+  remembered: [],
   nextId: 1
+}
+
+/** État d'une conversation rouverte depuis l'historique. */
+export function chatFromTurns(turns: Turn[]): ChatState {
+  return {
+    ...EMPTY_CHAT,
+    messages: turns.map((turn, index) => ({ id: index + 1, role: turn.role, text: turn.text })),
+    nextId: turns.length + 1
+  }
+}
+
+export function forgetRemembered(state: ChatState, fact: string): ChatState {
+  return { ...state, remembered: state.remembered.filter((other) => other !== fact) }
 }
 
 const MOOD_STATES: Record<Mood, AvatarState> = {
@@ -44,6 +61,7 @@ export function sendingMessage(state: ChatState, text: string): ChatState {
     mood: 'idle',
     notice: null,
     failure: null,
+    remembered: [],
     messages: [...base.messages, { id: base.nextId, role: 'user', text }],
     nextId: base.nextId + 1
   }
@@ -85,6 +103,7 @@ export function applyChatEvent(state: ChatState, event: ChatEvent): ChatState {
         ...state,
         busy: false,
         mood: MOOD_STATES[event.mood],
+        remembered: event.facts,
         notice: event.truncated ? 'Réponse coupée : elle a atteint la longueur maximale.' : null
       }
     case 'stopped':

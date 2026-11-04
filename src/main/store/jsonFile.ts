@@ -7,7 +7,7 @@ import type { z } from 'zod'
  * valeur de repli : un fichier abîmé ne doit pas empêcher l'app de démarrer.
  * Il est mis de côté, sinon la prochaine écriture l'écraserait pour de bon.
  */
-export function readJson<S extends z.ZodType>(path: string, schema: S, fallback: z.output<S>): z.output<S> {
+export function readJson<S extends z.ZodType, F = z.output<S>>(path: string, schema: S, fallback: F): z.output<S> | F {
   let raw: string
   try {
     raw = readFileSync(path, 'utf8')

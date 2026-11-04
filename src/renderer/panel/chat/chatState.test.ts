@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { applyChatEvent, dropFailedTurn, EMPTY_CHAT, sendingMessage, type ChatState } from './chatState'
+import {
+  applyChatEvent,
+  chatFromTurns,
+  dropFailedTurn,
+  EMPTY_CHAT,
+  forgetRemembered,
+  sendingMessage,
+  type ChatState
+} from './chatState'
 
 const sessionId = 's'
 const send = (state: ChatState, text: string): ChatState => sendingMessage(state, text)
@@ -25,19 +33,19 @@ describe('chatState', () => {
       sessionId,
       type: 'done',
       mood: 'happy',
-      truncated: false
+      truncated: false, facts: []
     })
     expect(state.mood).toBe('happy')
     expect(state.busy).toBe(false)
   })
 
   it('traduit neutral par l\'état de repos', () => {
-    const state = applyChatEvent(send(EMPTY_CHAT, 'a'), { sessionId, type: 'done', mood: 'neutral', truncated: false })
+    const state = applyChatEvent(send(EMPTY_CHAT, 'a'), { sessionId, type: 'done', mood: 'neutral', truncated: false, facts: [] })
     expect(state.mood).toBe('idle')
   })
 
   it('signale une réponse coupée', () => {
-    const state = applyChatEvent(send(EMPTY_CHAT, 'a'), { sessionId, type: 'done', mood: 'neutral', truncated: true })
+    const state = applyChatEvent(send(EMPTY_CHAT, 'a'), { sessionId, type: 'done', mood: 'neutral', truncated: true, facts: [] })
     expect(state.notice).toContain('coupée')
   })
 
@@ -61,7 +69,7 @@ describe('chatState', () => {
   })
 
   it('un envoi normal ne retire rien', () => {
-    const done = applyChatEvent(delta(send(EMPTY_CHAT, 'a'), 'b'), { sessionId, type: 'done', mood: 'neutral', truncated: false })
+    const done = applyChatEvent(delta(send(EMPTY_CHAT, 'a'), 'b'), { sessionId, type: 'done', mood: 'neutral', truncated: false, facts: [] })
     expect(send(done, 'c').messages.map((m) => m.text)).toEqual(['a', 'b', 'c'])
   })
 
@@ -70,7 +78,7 @@ describe('chatState', () => {
       sessionId,
       type: 'done',
       mood: 'neutral',
-      truncated: false
+      truncated: false, facts: []
     })
     const failed = applyChatEvent(delta(send(answered, 'Après'), 'Début'), {
       sessionId,
@@ -80,6 +88,26 @@ describe('chatState', () => {
     const state = dropFailedTurn(failed)
     expect(state.messages.map((m) => m.text)).toEqual(['Avant', 'Réponse'])
     expect(state.failure).toBeNull()
+  })
+
+  it('rouvre une conversation et continue sans collision d\'identifiants', () => {
+    const state = send(
+      chatFromTurns([
+        { role: 'user', text: 'a' },
+        { role: 'assistant', text: 'b' }
+      ]),
+      'c'
+    )
+    expect(state.messages.map((m) => m.text)).toEqual(['a', 'b', 'c'])
+    expect(new Set(state.messages.map((m) => m.id)).size).toBe(3)
+    expect(state.busy).toBe(true)
+  })
+
+  it('signale les faits retenus jusqu\'au message suivant', () => {
+    const state = applyChatEvent(send(EMPTY_CHAT, 'a'), { sessionId, type: 'done', mood: 'neutral', truncated: false, facts: ['Vit à Brest'] })
+    expect(state.remembered).toEqual(['Vit à Brest'])
+    expect(forgetRemembered(state, 'Vit à Brest').remembered).toEqual([])
+    expect(send(state, 'b').remembered).toEqual([])
   })
 
   it('un nouvel envoi efface l\'erreur précédente', () => {

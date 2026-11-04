@@ -4,6 +4,7 @@
 import type { Agent, AgentDraft } from './agent'
 import type { AvatarConfig } from './avatar'
 import type { ChatEvent } from './chat'
+import type { Conversation, ConversationSummary } from './conversation'
 
 export const CORNERS = ['top-left', 'top-right', 'bottom-left', 'bottom-right'] as const
 export type Corner = (typeof CORNERS)[number]
@@ -17,6 +18,18 @@ export const IPC = {
   panelState: 'panel:state',
   panelPainted: 'panel:painted',
   panelClose: 'panel:close',
+  panelNavigate: 'panel:navigate',
+  conversationsList: 'conversations:list',
+  conversationsGet: 'conversations:get',
+  conversationsDelete: 'conversations:delete',
+  memoryGet: 'memory:get',
+  memorySet: 'memory:set',
+  shortcutGet: 'shortcut:get',
+  shortcutSet: 'shortcut:set',
+  shortcutSuspend: 'shortcut:suspend',
+  shortcutResume: 'shortcut:resume',
+  loginItemGet: 'login-item:get',
+  loginItemSet: 'login-item:set',
   agentsList: 'agents:list',
   agentsSave: 'agents:save',
   agentsRemove: 'agents:remove',
@@ -75,6 +88,33 @@ export interface PanelApi {
   onState(listener: (state: PanelState) => void): () => void
   painted(requestedAt: number): void
   close(): void
+  onNavigate(listener: (target: 'settings') => void): () => void
+}
+
+export interface ConversationsApi {
+  list(agentId: string): Promise<ConversationSummary[]>
+  get(agentId: string, id: string): Promise<Conversation | null>
+  remove(agentId: string, id: string): Promise<void>
+}
+
+export interface MemoryApi {
+  get(agentId: string): Promise<string[]>
+  set(agentId: string, facts: string[]): Promise<string[]>
+}
+
+export interface ShortcutState {
+  accelerator: string
+  /** `false` : le raccourci est pris par une autre app et ne répond pas. */
+  active: boolean
+}
+
+export interface PreferencesApi {
+  getShortcut(): Promise<ShortcutState>
+  setShortcut(accelerator: string): Promise<Result>
+  suspendShortcut(): void
+  resumeShortcut(): void
+  getLoginItem(): Promise<boolean>
+  setLoginItem(enabled: boolean): Promise<Result>
 }
 
 export interface AgentsApi {
@@ -94,7 +134,8 @@ export interface KeyApi {
 }
 
 export interface ChatApi {
-  send(sessionId: string, agent: AgentDraft, text: string): void
+  /** `agentId` nul : essai depuis l'assistant, dont rien n'est conservé. */
+  send(sessionId: string, agent: AgentDraft, text: string, agentId: string | null): void
   stop(sessionId: string): void
   reset(sessionId: string): void
   onEvent(listener: (event: ChatEvent) => void): () => void
@@ -113,6 +154,9 @@ export interface ToolboxApi {
   agents: AgentsApi
   key: KeyApi
   connection: ConnectionApi
+  conversations: ConversationsApi
+  memory: MemoryApi
+  preferences: PreferencesApi
   chat: ChatApi
   generateAgent(description: string): Promise<Result<AgentDraft>>
   copyText(text: string): void

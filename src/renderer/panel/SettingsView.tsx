@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { Provider } from '../../shared/ipc'
 import { ApiKeySettings } from './ApiKeySettings'
+import { PreferenceSettings } from './PreferenceSettings'
 import { SubscriptionSettings } from './SubscriptionSettings'
 
 interface SettingsViewProps {
@@ -52,6 +53,7 @@ export function SettingsView({ panelOpen, onBack }: SettingsViewProps): React.JS
         </fieldset>
         {provider === 'subscription' && <SubscriptionSettings panelOpen={panelOpen} />}
         {provider === 'api' && <ApiKeySettings />}
+        <PreferenceSettings panelOpen={panelOpen} />
       </div>
     </div>
   )

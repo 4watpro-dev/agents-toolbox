@@ -58,6 +58,15 @@ describe('buildSystemPrompt', () => {
     expect(prompt).toContain('[mood:sorry]')
   })
 
+  it('demande de retenir des faits seulement pour un agent enregistré', () => {
+    expect(buildSystemPrompt(draft(), [], { remember: true })).toContain('[remember:')
+    expect(buildSystemPrompt(draft())).not.toContain('[remember:')
+  })
+
+  it('exclut les données sensibles de la mémoire', () => {
+    expect(buildSystemPrompt(draft(), [], { remember: true })).toContain('jamais de mot de passe')
+  })
+
   it("signale le message d'accueil, déjà affiché à la personne", () => {
     expect(buildSystemPrompt(draft({ greeting: 'Salut !' }))).toContain('« Salut ! »')
     expect(buildSystemPrompt(draft())).not.toContain('Ton accueil')

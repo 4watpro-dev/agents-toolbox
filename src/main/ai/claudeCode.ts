@@ -8,20 +8,21 @@ import { z } from 'zod'
 import type { AgentDraft } from '../../shared/agent'
 import type { ChatEvent, ChatFailure } from '../../shared/chat'
 import type { Result, SubscriptionStatus } from '../../shared/ipc'
-import { createMoodParser } from '../../shared/moodParser'
-import { buildSystemPrompt } from '../../shared/systemPrompt'
+import type { Turn } from '../../shared/conversation'
+import { createReplyParser } from '../../shared/replyParser'
 import {
   chatArgs,
   classifyResult,
   cleanEnv,
   CLI_MISSING,
+  isMissingSession,
   isPlanBilled,
   NOT_ON_PLAN,
   parseStreamLine,
   promptWithHistory,
   structuredArgs,
   type ResultEvent,
-  type Turn
+  type TurnContext
 } from './claudeCodeProtocol'
 import { GENERATION_INSTRUCTIONS, GENERATION_MODEL } from './generationPrompt'
 import { GeneratedAgentSchema, normalizeGenerated } from './normalizeGenerated'
@@ -84,7 +85,13 @@ function launch(binary: string, args: string[]): ChildProcess {
   return child
 }
 
-export function sendViaClaudeCode(sessionId: string, agent: AgentDraft, text: string, emit: Emit): void {
+export function sendViaClaudeCode(
+  sessionId: string,
+  agent: AgentDraft,
+  text: string,
+  emit: Emit,
+  context: TurnContext
+): void {
   if (running.has(sessionId)) return
 
   const binary = findBinary()
@@ -93,12 +100,13 @@ export function sendViaClaudeCode(sessionId: string, agent: AgentDraft, text: st
     return
   }
 
-  const session = sessions.get(sessionId) ?? { turns: [], resumeId: null }
+  const session = sessions.get(sessionId) ?? { turns: [...context.turns], resumeId: context.resumeId }
   sessions.set(sessionId, session)
+  const usedResume = session.resumeId !== null
   const prompt = session.resumeId ? text : promptWithHistory(session.turns, text)
-  const args = chatArgs(buildSystemPrompt(agent), agent.model, agent.effort, session.resumeId)
+  const args = chatArgs(context.systemPrompt, agent.model, agent.effort, session.resumeId)
 
-  const parser = createMoodParser()
+  const parser = createReplyParser()
   const child = launch(binary, args)
   let visibleText = ''
   let newSessionId: string | null = null
@@ -178,18 +186,35 @@ export function sendViaClaudeCode(sessionId: string, agent: AgentDraft, text: st
       })
       return
     }
+    // Session effacée par Claude Code : on repart d'une session neuve avec l'historique en texte.
+    if (usedResume && isMissingSession(finished)) {
+      sendViaClaudeCode(sessionId, agent, text, emit, context)
+      return
+    }
     const failure = classifyResult(finished)
     if (failure) {
       emit({ sessionId, type: 'error', failure })
       return
     }
 
-    const { text: rest, mood } = parser.finish()
+    const { text: rest, mood, facts } = parser.finish()
     if (rest) emit({ sessionId, type: 'delta', text: rest })
     session.turns.push({ role: 'user', text }, { role: 'assistant', text: (visibleText + rest).trim() })
     session.resumeId = finished.sessionId ?? newSessionId
-    emit({ sessionId, type: 'done', mood, truncated: finished.stopReason === 'max_tokens' })
+    emit({ sessionId, type: 'done', mood, truncated: finished.stopReason === 'max_tokens', facts })
   })
+}
+
+/** Session à reprendre au prochain tour, à conserver avec la conversation. */
+export function claudeResumeId(sessionId: string): string | null {
+  return sessions.get(sessionId)?.resumeId ?? null
+}
+
+/** Oublie les sessions en mémoire : elles seront rechargées depuis les conversations enregistrées. */
+export function forgetClaudeSessions(): void {
+  for (const sessionId of sessions.keys()) {
+    if (!running.has(sessionId)) sessions.delete(sessionId)
+  }
 }
 
 export function stopViaClaudeCode(sessionId: string): void {

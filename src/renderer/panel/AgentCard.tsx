@@ -1,6 +1,7 @@
-import { useState, type KeyboardEvent } from 'react'
+import { useCallback, useState } from 'react'
 import type { Agent } from '../../shared/agent'
 import { Avatar } from '../avatar/Avatar'
+import { useEscape } from './useEscape'
 
 interface AgentCardProps {
   agent: Agent
@@ -16,13 +17,8 @@ export function AgentCard({ agent, onOpen, onEdit, onRemove, onToggleFavorite }:
   const [hovered, setHovered] = useState(false)
   const [overlay, setOverlay] = useState<Overlay>('none')
 
-  function onKeyDown(event: KeyboardEvent): void {
-    if (event.key === 'Escape' && overlay !== 'none') {
-      // Échap ferme d'abord le menu : le panneau reste ouvert.
-      event.preventDefault()
-      setOverlay('none')
-    }
-  }
+  const closeOverlay = useCallback(() => setOverlay('none'), [])
+  useEscape(overlay !== 'none', closeOverlay)
 
   return (
     <li
@@ -32,7 +28,6 @@ export function AgentCard({ agent, onOpen, onEdit, onRemove, onToggleFavorite }:
         setHovered(false)
         if (overlay === 'menu') setOverlay('none')
       }}
-      onKeyDown={onKeyDown}
     >
       <button type="button" className="card-open" onClick={onOpen}>
         {/* Une grille de flottements continus coûterait cher : seule la carte survolée flotte. */}
@@ -74,7 +69,7 @@ export function AgentCard({ agent, onOpen, onEdit, onRemove, onToggleFavorite }:
 
       {overlay === 'confirm' && (
         <div className="card-confirm" role="alertdialog" aria-label={`Supprimer ${agent.name} ?`}>
-          <p>Supprimer {agent.name} ?</p>
+          <p>Supprimer {agent.name}, ses conversations et sa mémoire ?</p>
           <div className="card-confirm-actions">
             <button type="button" className="button" autoFocus onClick={() => setOverlay('none')}>
               Annuler

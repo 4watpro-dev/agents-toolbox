@@ -49,10 +49,12 @@ export function AgentWizard({ agent, panelOpen, onCancel, onOpenSettings, onSave
       <ChatView
         sessionId={TEST_SESSION}
         agent={finalizeDraft(draft)}
+        agentId={null}
         panelOpen={panelOpen}
         subtitle="Essai : rien n'est conservé"
         backLabel="Revenir à la fiche de l'agent"
         onBack={endTest}
+        onNew={() => resetChatSession(TEST_SESSION)}
         onOpenSettings={onOpenSettings}
       />
     )

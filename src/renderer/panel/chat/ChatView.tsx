@@ -4,10 +4,11 @@ import type { AvatarState } from '../../../shared/avatar'
 import { Avatar } from '../../avatar/Avatar'
 import { MessageBubble } from './MessageBubble'
 import {
-  resetChatSession,
+  loadChatSession,
   retryChatMessage,
   sendChatMessage,
   stopChatMessage,
+  undoRemembered,
   useChatSession
 } from './chatStore'
 
@@ -17,23 +18,33 @@ const CONNECTION_ERRORS = new Set(['missing_key', 'invalid_key', 'not_logged_in'
 interface ChatViewProps {
   sessionId: string
   agent: AgentDraft
+  /** `null` : essai depuis l'assistant, dont rien n'est conservé. */
+  agentId: string | null
   panelOpen: boolean
   subtitle?: string
-  onBack(): void
   backLabel: string
+  onBack(): void
+  onNew(): void
   onEdit?(): void
+  onDetails?(): void
   onOpenSettings(): void
+  /** Sélecteur d'agent : remplace le titre fixe de l'en-tête. */
+  switcher?: React.ReactNode
 }
 
 export function ChatView({
   sessionId,
   agent,
+  agentId,
   panelOpen,
   subtitle,
-  onBack,
   backLabel,
+  onBack,
+  onNew,
   onEdit,
-  onOpenSettings
+  onDetails,
+  onOpenSettings,
+  switcher
 }: ChatViewProps): React.JSX.Element {
   const chat = useChatSession(sessionId)
   const [input, setInput] = useState('')
@@ -44,6 +55,11 @@ export function ChatView({
   const avatarState: AvatarState = chat.busy ? 'thinking' : input.trim() ? 'listening' : chat.mood
 
   useEffect(() => {
+    if (agentId) void loadChatSession(agentId, sessionId)
+    stuckToBottom.current = true
+  }, [agentId, sessionId])
+
+  useEffect(() => {
     if (panelOpen) field.current?.focus()
   }, [panelOpen, sessionId])
 
@@ -51,14 +67,14 @@ export function ChatView({
   useEffect(() => {
     const element = scroller.current
     if (element && stuckToBottom.current) element.scrollTop = element.scrollHeight
-  }, [chat.messages, chat.failure, chat.notice])
+  }, [chat.messages, chat.failure, chat.notice, chat.remembered])
 
   function send(): void {
     const text = input.trim()
     if (!text || chat.busy) return
     stuckToBottom.current = true
     setInput('')
-    sendChatMessage(sessionId, agent, text)
+    sendChatMessage(sessionId, agent, text, agentId)
   }
 
   function onKeyDown(event: KeyboardEvent<HTMLTextAreaElement>): void {
@@ -76,20 +92,27 @@ export function ChatView({
           ‹
         </button>
         <Avatar config={agent.avatar} state={avatarState} size={58} groundShadow={false} label={`Avatar de ${agent.name}`} />
-        <div className="chat-title">
-          <h1>{agent.name}</h1>
-          <p>{subtitle ?? agent.specialty}</p>
-        </div>
+        {switcher ?? (
+          <div className="chat-title">
+            <h1>{agent.name}</h1>
+            <p>{subtitle ?? agent.specialty}</p>
+          </div>
+        )}
         <button
           type="button"
           className="button-icon"
-          aria-label="Recommencer la conversation"
-          title="Recommencer la conversation"
+          aria-label="Nouvelle conversation"
+          title="Nouvelle conversation"
           disabled={chat.messages.length === 0}
-          onClick={() => resetChatSession(sessionId)}
+          onClick={onNew}
         >
-          ⟲
+          ＋
         </button>
+        {onDetails && (
+          <button type="button" className="button-icon" aria-label="Historique et mémoire" title="Historique et mémoire" onClick={onDetails}>
+            ☰
+          </button>
+        )}
         {onEdit && (
           <button type="button" className="button-icon" aria-label={`Modifier ${agent.name}`} title="Modifier" onClick={onEdit}>
             ✎
@@ -113,6 +136,17 @@ export function ChatView({
         {chat.busy && chat.messages.at(-1)?.role === 'user' && (
           <p className="chat-waiting">{agent.name} réfléchit…</p>
         )}
+        {agentId &&
+          chat.remembered.map((fact) => (
+            <div key={fact} className="chat-remembered" role="status">
+              <span>
+                <strong>{agent.name} retient :</strong> {fact}
+              </span>
+              <button type="button" className="button" onClick={() => void undoRemembered(sessionId, agentId, fact)}>
+                Retirer
+              </button>
+            </div>
+          ))}
         {chat.notice && <p className="chat-notice">{chat.notice}</p>}
         {chat.failure && (
           <div className="chat-failure" role="alert">
@@ -123,7 +157,7 @@ export function ChatView({
                   Ouvrir les réglages
                 </button>
               ) : (
-                <button type="button" className="button" onClick={() => retryChatMessage(sessionId, agent)}>
+                <button type="button" className="button" onClick={() => retryChatMessage(sessionId, agent, agentId)}>
                   Réessayer
                 </button>
               )}

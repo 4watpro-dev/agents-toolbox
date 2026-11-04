@@ -1,4 +1,5 @@
 import type { ChatFailure } from '../../shared/chat'
+import type { Turn } from '../../shared/conversation'
 
 /**
  * Seules ces variables passent à Claude Code. Une clé API présente dans
@@ -66,9 +67,17 @@ export function structuredArgs(
   ]
 }
 
-export interface Turn {
-  role: 'user' | 'assistant'
-  text: string
+/** Ce qu'un tour de conversation reçoit, quel que soit le mode de connexion. */
+export interface TurnContext {
+  systemPrompt: string
+  /** Échanges déjà conservés : servent quand la session n'est plus en mémoire. */
+  turns: Turn[]
+  resumeId: string | null
+}
+
+/** Claude Code efface ses anciennes sessions : la conversation doit pouvoir leur survivre. */
+export function isMissingSession(result: ResultEvent): boolean {
+  return /no conversation found/i.test(result.text)
 }
 
 /** Repart d'une session neuve en lui redonnant les échanges réussis, sous forme de texte. */
@@ -100,9 +109,11 @@ function stringOrNull(value: unknown): string | null {
 }
 
 export function toResultEvent(data: Record<string, unknown>): ResultEvent {
+  // Certains échecs ne remplissent que `errors`, sans `result`.
+  const errors = Array.isArray(data['errors']) ? data['errors'].filter((e) => typeof e === 'string').join(' ') : ''
   return {
     isError: data['is_error'] === true,
-    text: stringOrNull(data['result']) ?? '',
+    text: stringOrNull(data['result']) || errors,
     stopReason: stringOrNull(data['stop_reason']),
     terminalReason: stringOrNull(data['terminal_reason']),
     apiStatus: typeof data['api_error_status'] === 'number' ? data['api_error_status'] : null,

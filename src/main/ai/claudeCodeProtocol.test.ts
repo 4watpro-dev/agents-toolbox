@@ -3,6 +3,7 @@ import {
   chatArgs,
   classifyResult,
   cleanEnv,
+  isMissingSession,
   isPlanBilled,
   parseStreamLine,
   promptWithHistory,
@@ -135,6 +136,19 @@ describe('parseStreamLine', () => {
     )
     expect(event?.type).toBe('result')
     if (event?.type === 'result') expect(classifyResult(event.result)?.code).toBe('not_logged_in')
+  })
+})
+
+describe('isMissingSession', () => {
+  it('reconnaît le résultat réel d\'une session disparue', () => {
+    const event = parseStreamLine(
+      '{"type":"result","subtype":"error_during_execution","is_error":true,"errors":["No conversation found with session ID: 11111111-2222-4333-8444-555555555555"]}'
+    )
+    expect(event?.type === 'result' && isMissingSession(event.result)).toBe(true)
+  })
+
+  it('ne confond pas une autre erreur', () => {
+    expect(isMissingSession(toResultEvent({ is_error: true, result: 'API Error: 529' }))).toBe(false)
   })
 })
 
