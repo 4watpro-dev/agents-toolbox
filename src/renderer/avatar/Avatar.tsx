@@ -306,7 +306,7 @@ function AccessoryLayer({ accessory, ink, top, width, height, clipId }: Accessor
       )
     }
     case 'beanie': {
-      const depth = height * 0.34
+      const depth = height * 0.3
       return (
         <g clipPath={`url(#${clipId})`}>
           <rect x={left} y={top} width={width} height={depth} fill="#e4572e" />

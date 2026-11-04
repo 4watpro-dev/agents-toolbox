@@ -5,6 +5,7 @@ import type { z } from 'zod'
 /**
  * Lit un fichier JSON et le valide. Un fichier absent ou corrompu donne la
  * valeur de repli : un fichier abîmé ne doit pas empêcher l'app de démarrer.
+ * Il est mis de côté, sinon la prochaine écriture l'écraserait pour de bon.
  */
 export function readJson<S extends z.ZodType>(path: string, schema: S, fallback: z.output<S>): z.output<S> {
   let raw: string
@@ -16,10 +17,12 @@ export function readJson<S extends z.ZodType>(path: string, schema: S, fallback:
   try {
     const result = schema.safeParse(JSON.parse(raw))
     if (result.success) return result.data
-    console.warn(`[store] contenu invalide ignoré : ${path}`)
   } catch {
-    console.warn(`[store] JSON illisible ignoré : ${path}`)
+    // JSON illisible : même traitement qu'un contenu invalide.
   }
+  const backup = `${path}.corrompu-${Date.now()}`
+  renameSync(path, backup)
+  console.warn(`[store] fichier invalide mis de côté : ${backup}`)
   return fallback
 }
 

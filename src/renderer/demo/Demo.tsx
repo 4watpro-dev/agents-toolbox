@@ -5,13 +5,11 @@ import {
   DEFAULT_AVATAR,
   EYE_STYLES,
   HEAD_SHAPES,
-  type Accessory,
   type AvatarConfig,
-  type AvatarState,
-  type EyeStyle,
-  type HeadShape
+  type AvatarState
 } from '../../shared/avatar'
 import { Avatar } from '../avatar/Avatar'
+import { ACCESSORY_LABELS, EYE_LABELS, HEAD_LABELS } from '../avatar/labels'
 
 const STATE_LABELS: Record<AvatarState, string> = {
   idle: 'Repos',
@@ -21,16 +19,6 @@ const STATE_LABELS: Record<AvatarState, string> = {
   surprised: 'Surpris',
   confused: 'Confus',
   sorry: 'Désolé'
-}
-
-const EYE_LABELS: Record<EyeStyle, string> = { oval: 'Ovales', round: 'Ronds', wide: 'Larges', pixel: 'Carrés' }
-const HEAD_LABELS: Record<HeadShape, string> = { capsule: 'Capsule', round: 'Ronde', square: 'Carrée' }
-const ACCESSORY_LABELS: Record<Accessory, string> = {
-  none: 'Aucun',
-  glasses: 'Lunettes',
-  headphones: 'Casque',
-  bowtie: 'Nœud papillon',
-  beanie: 'Bonnet'
 }
 
 interface ChoiceProps<T extends string> {

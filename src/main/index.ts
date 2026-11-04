@@ -1,4 +1,5 @@
 import { app } from 'electron'
+import { registerAgentIpc } from './agentIpc'
 import { createTray } from './tray'
 import { createWindows, openPanel } from './windows'
 
@@ -10,6 +11,7 @@ if (!app.requestSingleInstanceLock()) {
   app.on('window-all-closed', () => undefined)
   void app.whenReady().then(() => {
     app.dock?.hide()
+    registerAgentIpc()
     createWindows()
     createTray()
   })

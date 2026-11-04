@@ -1,4 +1,5 @@
-import { useRef, useState, type PointerEvent } from 'react'
+import { useEffect, useRef, useState, type PointerEvent } from 'react'
+import { DEFAULT_AVATAR, type AvatarConfig } from '../../shared/avatar'
 import { Avatar } from '../avatar/Avatar'
 
 const DRAG_THRESHOLD_PX = 4
@@ -12,6 +13,12 @@ interface Press {
 export function Widget(): React.JSX.Element {
   const press = useRef<Press | null>(null)
   const [dragging, setDragging] = useState(false)
+  const [avatar, setAvatar] = useState<AvatarConfig>(DEFAULT_AVATAR)
+
+  useEffect(() => {
+    void window.toolbox.widget.getAvatar().then(setAvatar)
+    return window.toolbox.widget.onAvatar(setAvatar)
+  }, [])
 
   function onPointerDown(event: PointerEvent<HTMLButtonElement>): void {
     if (event.button !== 0) return
@@ -52,8 +59,7 @@ export function Widget(): React.JSX.Element {
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerUp}
     >
-      {/* Au jalon 3, l'icône affichera l'avatar du dernier agent utilisé. */}
-      <Avatar size={46} groundShadow={false} floating={false} />
+      <Avatar config={avatar} size={46} groundShadow={false} floating={false} />
     </button>
   )
 }

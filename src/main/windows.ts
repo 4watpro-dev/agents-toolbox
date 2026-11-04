@@ -3,7 +3,8 @@ import { BrowserWindow, ipcMain, screen, type Display } from 'electron'
 import { z } from 'zod'
 import { IPC, type Corner, type PanelState } from '../shared/ipc'
 import { cornerPosition, nearestCorner, panelPosition } from './snap'
-import { loadSettings, saveSettings, type Settings } from './store/settings'
+import type { AvatarConfig } from '../shared/avatar'
+import { getSettings, updateSettings } from './store/settings'
 
 /** Horodatage (Date.now) du geste à l'origine de l'ouverture du panneau. */
 const TimestampSchema = z.number().finite().nonnegative()
@@ -20,7 +21,6 @@ const REOPEN_GUARD_MS = 250
 
 let widget: BrowserWindow
 let panel: BrowserWindow
-let settings: Settings
 let dragTimer: NodeJS.Timeout | null = null
 let snapTimer: NodeJS.Timeout | null = null
 let closeTimer: NodeJS.Timeout | null = null
@@ -54,7 +54,7 @@ function floatAboveEverything(window: BrowserWindow): void {
 }
 
 function currentDisplay(): Display {
-  const { displayId } = settings.widget
+  const { displayId } = getSettings().widget
   const saved = screen.getAllDisplays().find((display) => display.id === displayId)
   // L'écran mémorisé peut avoir été débranché.
   return saved ?? screen.getPrimaryDisplay()
@@ -87,14 +87,14 @@ function stopSnapAnimation(): void {
 }
 
 function sendPanelState(open: boolean, requestedAt: number): void {
-  const state: PanelState = { open, corner: settings.widget.corner, requestedAt }
+  const state: PanelState = { open, corner: getSettings().widget.corner, requestedAt }
   panel.webContents.send(IPC.panelState, state)
 }
 
 export function openPanel(requestedAt = Date.now()): void {
   if (closeTimer) clearTimeout(closeTimer)
   closeTimer = null
-  const { corner } = settings.widget
+  const { corner } = getSettings().widget
   const position = panelPosition(corner, currentDisplay().workArea, widget.getBounds(), PANEL_SIZE, 0)
   panel.setBounds({ ...position, ...PANEL_SIZE })
   panelOpen = true
@@ -138,8 +138,7 @@ function endDrag(): void {
   const center = { x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2 }
   const display = screen.getDisplayNearestPoint(center)
   const corner = nearestCorner(center, display.workArea)
-  settings = { ...settings, widget: { displayId: display.id, corner } }
-  saveSettings(settings)
+  updateSettings({ widget: { displayId: display.id, corner } })
   moveWidgetTo(corner, display, true)
 }
 
@@ -230,16 +229,19 @@ export function openDemo(): void {
   loadPage(demo, 'demo')
 }
 
+export function sendWidgetAvatar(avatar: AvatarConfig): void {
+  widget.webContents.send(IPC.widgetAvatar, avatar)
+}
+
 export function createWindows(): void {
-  settings = loadSettings()
   registerIpc()
   widget = createWidget()
   panel = createPanel()
-  moveWidgetTo(settings.widget.corner, currentDisplay(), false)
+  moveWidgetTo(getSettings().widget.corner, currentDisplay(), false)
   // Résolution modifiée ou écran débranché : l'icône revient à son coin.
   const replace = (): void => {
     closePanel()
-    moveWidgetTo(settings.widget.corner, currentDisplay(), false)
+    moveWidgetTo(getSettings().widget.corner, currentDisplay(), false)
   }
   screen.on('display-metrics-changed', replace)
   screen.on('display-removed', replace)
