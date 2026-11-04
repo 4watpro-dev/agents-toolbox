@@ -1,4 +1,5 @@
 import type { Mood } from './replyParser'
+import type { ToolActivity } from './tools'
 
 export type ChatErrorCode =
   | 'missing_key'
@@ -24,6 +25,7 @@ export interface ChatFailure {
 
 export type ChatEvent = { sessionId: string } & (
   | { type: 'delta'; text: string }
+  | { type: 'tool'; activity: ToolActivity }
   | { type: 'done'; mood: Mood; truncated: boolean; facts: string[] }
   | { type: 'stopped' }
   | { type: 'error'; failure: ChatFailure }

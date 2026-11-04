@@ -23,6 +23,17 @@ describe('chatState', () => {
     expect(state.busy).toBe(true)
   })
 
+  it("affiche l'outil en cours jusqu'à la reprise du texte ou la fin du tour", () => {
+    const activity = { kind: 'search', query: 'tarifs' } as const
+    const searching = applyChatEvent(send(EMPTY_CHAT, 'Salut'), { sessionId, type: 'tool', activity })
+    expect(searching.activity).toEqual(activity)
+    expect(searching.busy).toBe(true)
+    expect(delta(searching, 'Voici').activity).toBeNull()
+    expect(applyChatEvent(searching, { sessionId, type: 'stopped' }).activity).toBeNull()
+    expect(applyChatEvent(searching, { sessionId, type: 'done', mood: 'neutral', truncated: false, facts: [] }).activity).toBeNull()
+    expect(applyChatEvent(searching, { sessionId, type: 'error', failure: { code: 'unknown', message: 'x' } }).activity).toBeNull()
+  })
+
   it('donne des identifiants uniques', () => {
     const state = delta(send(EMPTY_CHAT, 'Salut'), 'Bonjour')
     expect(new Set(state.messages.map((m) => m.id)).size).toBe(2)

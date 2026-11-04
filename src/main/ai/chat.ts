@@ -1,17 +1,23 @@
 import Anthropic from '@anthropic-ai/sdk'
 import type { AgentDraft } from '../../shared/agent'
-import type { ChatEvent } from '../../shared/chat'
+import type { ChatEvent, ChatFailure } from '../../shared/chat'
 import { createReplyParser } from '../../shared/replyParser'
 import type { TurnContext } from './claudeCodeProtocol'
 import { getClient } from './client'
 import { classifyError, MISSING_KEY, REFUSAL } from './errors'
 import { toHistoryContent } from './history'
+import { createServerToolTracker, sourcesFooter, webTools } from './webTools'
 
 type MessageParam = Anthropic.Beta.Messages.BetaMessageParam
 type Emit = (event: ChatEvent) => void
 
 const MAX_TOKENS = 64000
 const FALLBACK_BETA = 'server-side-fallback-2026-07-01'
+const MAX_CONTINUATIONS = 5
+const SEARCH_TOO_LONG: ChatFailure = {
+  code: 'unknown',
+  message: 'Cette recherche prend trop de temps. Réessaie avec une demande plus précise.'
+}
 
 const histories = new Map<string, MessageParam[]>()
 const activeStreams = new Map<string, { abort(): void }>()
@@ -35,36 +41,57 @@ export async function sendMessage(
     emit({ sessionId, type: 'error', failure: MISSING_KEY })
     return
   }
+  const api = client
 
   // Après une relance, on repart du texte conservé : les blocs de réflexion ne sont pas enregistrés.
   const history: MessageParam[] =
     histories.get(sessionId) ?? context.turns.map((turn) => ({ role: turn.role, content: turn.text }))
   const userMessage: MessageParam = { role: 'user', content: text }
   const parser = createReplyParser()
+  const tracker = createServerToolTracker()
+  const tools = webTools(agent.tools)
   let visibleText = ''
+  // Réponses mises en pause par l'API pendant ses recherches : à renvoyer telles quelles, dans l'ordre.
+  const paused: MessageParam[] = []
 
-  const stream = client.beta.messages.stream({
-    model: agent.model,
-    max_tokens: MAX_TOKENS,
-    system: context.systemPrompt,
-    messages: [...history, userMessage],
-    output_config: { effort: agent.effort },
-    cache_control: { type: 'ephemeral' },
-    ...fallbackParams(agent.model)
-  })
-  activeStreams.set(sessionId, stream)
+  function openStream(): ReturnType<typeof api.beta.messages.stream> {
+    const stream = api.beta.messages.stream({
+      model: agent.model,
+      max_tokens: MAX_TOKENS,
+      system: context.systemPrompt,
+      messages: [...history, userMessage, ...paused],
+      output_config: { effort: agent.effort },
+      cache_control: { type: 'ephemeral' },
+      ...(tools.length > 0 ? { tools } : {}),
+      ...fallbackParams(agent.model)
+    })
+    activeStreams.set(sessionId, stream)
+    return stream
+  }
 
   try {
-    for await (const event of stream) {
-      if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
-        const visible = parser.push(event.delta.text)
-        if (visible) {
-          visibleText += visible
-          emit({ sessionId, type: 'delta', text: visible })
+    let message: Anthropic.Beta.Messages.BetaMessage
+    for (;;) {
+      const stream = openStream()
+      for await (const event of stream) {
+        const activity = tracker.push(event)
+        if (activity) emit({ sessionId, type: 'tool', activity })
+        if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
+          const visible = parser.push(event.delta.text)
+          if (visible) {
+            visibleText += visible
+            emit({ sessionId, type: 'delta', text: visible })
+          }
         }
       }
+      message = await stream.finalMessage()
+      if (message.stop_reason !== 'pause_turn') break
+      if (paused.length >= MAX_CONTINUATIONS) {
+        emit({ sessionId, type: 'error', failure: SEARCH_TOO_LONG })
+        return
+      }
+      paused.push({ role: 'assistant', content: toHistoryContent(message.content) })
     }
-    const message = await stream.finalMessage()
 
     // Un refus peut survenir en cours de réponse : ce début de texte n'entre pas dans l'historique.
     if (message.stop_reason === 'refusal') {
@@ -73,10 +100,12 @@ export async function sendMessage(
     }
 
     const { text: rest, mood, facts } = parser.finish()
-    if (rest) emit({ sessionId, type: 'delta', text: rest })
+    const footer = sourcesFooter(tracker.sources(), visibleText + rest)
+    if (rest || footer) emit({ sessionId, type: 'delta', text: rest + footer })
     histories.set(sessionId, [
       ...history,
       userMessage,
+      ...paused,
       { role: 'assistant', content: toHistoryContent(message.content) }
     ])
     emit({ sessionId, type: 'done', mood, truncated: message.stop_reason === 'max_tokens', facts })

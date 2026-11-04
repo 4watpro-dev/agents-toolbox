@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
 import type { AgentDraft } from '../../../shared/agent'
 import type { AvatarState } from '../../../shared/avatar'
+import { activityLabel } from '../../../shared/tools'
 import { Avatar } from '../../avatar/Avatar'
 import { MessageBubble } from './MessageBubble'
 import {
@@ -67,7 +68,7 @@ export function ChatView({
   useEffect(() => {
     const element = scroller.current
     if (element && stuckToBottom.current) element.scrollTop = element.scrollHeight
-  }, [chat.messages, chat.failure, chat.notice, chat.remembered])
+  }, [chat.messages, chat.activity, chat.failure, chat.notice, chat.remembered])
 
   function send(): void {
     const text = input.trim()
@@ -133,7 +134,8 @@ export function ChatView({
         {chat.messages.map((message) => (
           <MessageBubble key={message.id} role={message.role} text={message.text} />
         ))}
-        {chat.busy && chat.messages.at(-1)?.role === 'user' && (
+        {chat.busy && chat.activity && <p className="chat-waiting">{activityLabel(agent.name, chat.activity)}</p>}
+        {chat.busy && !chat.activity && chat.messages.at(-1)?.role === 'user' && (
           <p className="chat-waiting">{agent.name} réfléchit…</p>
         )}
         {agentId &&

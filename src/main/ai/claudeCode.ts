@@ -1,5 +1,5 @@
 import { spawn, type ChildProcess } from 'node:child_process'
-import { accessSync, constants, mkdirSync } from 'node:fs'
+import { accessSync, constants, mkdirSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { delimiter, join } from 'node:path'
 import { createInterface } from 'node:readline'
@@ -10,6 +10,7 @@ import type { ChatEvent, ChatFailure } from '../../shared/chat'
 import type { Result, SubscriptionStatus } from '../../shared/ipc'
 import type { Turn } from '../../shared/conversation'
 import { createReplyParser } from '../../shared/replyParser'
+import { describeToolUse, usesWebTools, type AgentTools } from '../../shared/tools'
 import {
   chatArgs,
   classifyResult,
@@ -26,6 +27,7 @@ import {
 } from './claudeCodeProtocol'
 import { GENERATION_INSTRUCTIONS, GENERATION_MODEL } from './generationPrompt'
 import { GeneratedAgentSchema, normalizeGenerated } from './normalizeGenerated'
+import { WEB_GUARD_SCRIPT, webToolArgs } from './webGuard'
 
 type Emit = (event: ChatEvent) => void
 
@@ -72,6 +74,15 @@ function neutralDirectory(): string {
   return directory
 }
 
+/** Le contrôle des outils vit hors du dossier neutre, que Claude Code garde vide. */
+function webArgs(tools: AgentTools): { tools: string; settings: string } {
+  const directory = join(app.getPath('userData'), 'tools')
+  mkdirSync(directory, { recursive: true })
+  const script = join(directory, 'web-guard.cjs')
+  writeFileSync(script, WEB_GUARD_SCRIPT, { mode: 0o600 })
+  return webToolArgs(tools, process.execPath, script)
+}
+
 function launch(binary: string, args: string[]): ChildProcess {
   const child = spawn(binary, args, {
     cwd: neutralDirectory(),
@@ -104,7 +115,8 @@ export function sendViaClaudeCode(
   sessions.set(sessionId, session)
   const usedResume = session.resumeId !== null
   const prompt = session.resumeId ? text : promptWithHistory(session.turns, text)
-  const args = chatArgs(context.systemPrompt, agent.model, agent.effort, session.resumeId)
+  const web = usesWebTools(agent.tools) ? webArgs(agent.tools) : null
+  const args = chatArgs(context.systemPrompt, agent.model, agent.effort, session.resumeId, web)
 
   const parser = createReplyParser()
   const child = launch(binary, args)
@@ -139,6 +151,11 @@ export function sendViaClaudeCode(
       if (visible) {
         visibleText += visible
         emit({ sessionId, type: 'delta', text: visible })
+      }
+    } else if (event.type === 'tools') {
+      for (const call of event.calls) {
+        const activity = describeToolUse(call.name, call.input)
+        if (activity) emit({ sessionId, type: 'tool', activity })
       }
     } else {
       result = event.result

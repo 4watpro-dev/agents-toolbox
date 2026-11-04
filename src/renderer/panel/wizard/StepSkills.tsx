@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { EFFORTS, MODELS, type AgentDraft } from '../../../shared/agent'
 import { composePrompt } from '../../../shared/systemPrompt'
+import { parseDomains, usesWebTools } from '../../../shared/tools'
 import { Field, Options, type StepProps } from './fields'
 
 const EFFORT_IDS = EFFORTS.map((effort) => effort.id)
@@ -12,6 +13,8 @@ const EFFORT_LABELS = Object.fromEntries(EFFORTS.map((effort) => [effort.id, eff
 export function StepSkills({ draft, update }: StepProps): React.JSX.Element {
   const [advanced, setAdvanced] = useState(draft.systemPromptOverride !== undefined)
   const composed = composePrompt(draft)
+  const { tools } = draft
+  const [domainsText, setDomainsText] = useState(tools.allowedDomains.join('\n'))
 
   return (
     <>
@@ -53,6 +56,49 @@ export function StepSkills({ draft, update }: StepProps): React.JSX.Element {
           onChange={(event) => update({ greeting: event.target.value })}
         />
       </Field>
+
+      <fieldset className="options tools">
+        <legend className="field-label">Outils</legend>
+        <label className="tool-option">
+          <input
+            type="checkbox"
+            checked={tools.webSearch}
+            onChange={(event) => update({ tools: { ...tools, webSearch: event.target.checked } })}
+          />
+          Recherche web
+        </label>
+        <label className="tool-option">
+          <input
+            type="checkbox"
+            checked={tools.webFetch}
+            onChange={(event) => update({ tools: { ...tools, webFetch: event.target.checked } })}
+          />
+          Lecture de pages web
+        </label>
+        {usesWebTools(tools) && (
+          <>
+            <Field
+              label="Domaines autorisés (optionnel)"
+              hint="Un par ligne, sous-domaines compris. Sans liste, l'agent peut accéder à tout le web : une page malveillante pourrait alors tenter de lui faire envoyer ailleurs ce qu'il sait."
+            >
+              <textarea
+                className="input"
+                rows={3}
+                spellCheck={false}
+                placeholder="brevo.com"
+                value={domainsText}
+                onChange={(event) => {
+                  setDomainsText(event.target.value)
+                  update({ tools: { ...tools, allowedDomains: parseDomains(event.target.value) } })
+                }}
+              />
+            </Field>
+            <p className="field-hint">
+              Avec ton abonnement, c'est compris dans ton forfait. Avec une clé API, chaque recherche coûte 10 $ les 1 000, plus les jetons des pages lues.
+            </p>
+          </>
+        )}
+      </fieldset>
 
       <details
         className="advanced"

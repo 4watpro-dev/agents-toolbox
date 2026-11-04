@@ -26,6 +26,34 @@ describe('stepError', () => {
   })
 })
 
+describe('outils', () => {
+  const withDomains = (allowedDomains: string[], webSearch = true): AgentDraft => ({
+    ...complete,
+    tools: { webSearch, webFetch: false, allowedDomains }
+  })
+
+  it('accepte une liste valide ou vide', () => {
+    expect(stepError(3, withDomains([]))).toBeNull()
+    expect(stepError(3, withDomains(['brevo.com', 'help.example.org']))).toBeNull()
+  })
+
+  it('bloque une entrée illisible plutôt que de l\'ignorer', () => {
+    expect(stepError(3, withDomains(['brevo.com', 'localhost']))).toContain('localhost')
+    expect(firstInvalidStep(withDomains(['localhost']))).toBe(3)
+  })
+
+  it('oublie une liste masquée quand aucun outil web n\'est actif', () => {
+    const draft = withDomains(['localhost'], false)
+    expect(stepError(3, draft)).toBeNull()
+    expect(AgentDraftSchema.safeParse(finalizeDraft(draft)).success).toBe(true)
+  })
+
+  it('donne aucun outil aux fiches enregistrées avant leur arrivée', () => {
+    const { tools: _tools, ...older } = finalizeDraft(complete)
+    expect(AgentDraftSchema.parse(older).tools).toEqual({ webSearch: false, webFetch: false, allowedDomains: [] })
+  })
+})
+
 describe('firstInvalidStep', () => {
   it('pointe la première étape incomplète', () => {
     expect(firstInvalidStep(EMPTY_DRAFT)).toBe(0)

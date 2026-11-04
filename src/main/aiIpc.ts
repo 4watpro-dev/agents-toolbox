@@ -44,7 +44,7 @@ const KeySchema = z.string().trim().min(1).max(500)
 const FactsSchema = z.array(z.string().max(2000)).max(200)
 
 /** Tours en cours. Retirer une entrée rend muette la fin d'un tour annulé par une suppression. */
-const activeTurns = new Map<string, { agentId: string | null; visibleText: string }>()
+const activeTurns = new Map<string, { agentId: string | null; visibleText: string; afterTool: boolean }>()
 
 /** Vérifie la clé avec un appel gratuit. Sans réseau, elle est gardée mais signalée comme non vérifiée. */
 async function saveKey(raw: unknown): Promise<Result<SaveKeyResult>> {
@@ -84,15 +84,21 @@ function startTurn(sender: WebContents, sessionId: string, agentIdRaw: unknown, 
     resumeId: conversation?.claudeSessionId ?? null
   }
 
-  const turn = { agentId, visibleText: '' }
+  const turn = { agentId, visibleText: '', afterTool: false }
   activeTurns.set(sessionId, turn)
   const resumeIdToKeep = (): string | null => (usesSubscription() ? claudeResumeId(sessionId) : null)
 
   const emit = (event: ChatEvent): void => {
     if (activeTurns.get(sessionId) !== turn) return
     let outgoing = event
-    if (event.type === 'delta') {
-      turn.visibleText += event.text
+    if (event.type === 'tool') {
+      turn.afterTool = true
+    } else if (event.type === 'delta') {
+      // Le texte qui suit un outil ne doit pas se coller à la phrase qui l'annonçait.
+      const text = turn.afterTool && turn.visibleText ? `\n\n${event.text}` : event.text
+      turn.afterTool = false
+      turn.visibleText += text
+      outgoing = { ...event, text }
     } else {
       activeTurns.delete(sessionId)
       if (agentId) {

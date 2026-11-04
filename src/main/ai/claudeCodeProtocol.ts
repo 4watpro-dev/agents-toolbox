@@ -20,7 +20,7 @@ export function cleanEnv(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
  * Options communes : un agent discute et rien d'autre. Il n'a aucun outil, et ne
  * charge ni tes réglages, ni tes hooks, ni tes serveurs MCP, ni tes skills.
  */
-function isolationArgs(systemPrompt: string, model: string, effort: string): string[] {
+function isolationArgs(systemPrompt: string, model: string, effort: string, tools = ''): string[] {
   return [
     '-p',
     '--verbose',
@@ -31,7 +31,7 @@ function isolationArgs(systemPrompt: string, model: string, effort: string): str
     '--system-prompt',
     systemPrompt,
     '--tools',
-    '',
+    tools,
     '--strict-mcp-config',
     '--setting-sources',
     '',
@@ -39,9 +39,16 @@ function isolationArgs(systemPrompt: string, model: string, effort: string): str
   ]
 }
 
-export function chatArgs(systemPrompt: string, model: string, effort: string, resumeId: string | null): string[] {
+export function chatArgs(
+  systemPrompt: string,
+  model: string,
+  effort: string,
+  resumeId: string | null,
+  web: { tools: string; settings: string } | null = null
+): string[] {
   return [
-    ...isolationArgs(systemPrompt, model, effort),
+    ...isolationArgs(systemPrompt, model, effort, web?.tools),
+    ...(web ? ['--settings', web.settings] : []),
     '--output-format',
     'stream-json',
     '--include-partial-messages',
@@ -102,6 +109,7 @@ export interface ResultEvent {
 export type StreamEvent =
   | { type: 'init'; sessionId: string | null; apiKeySource: string | null }
   | { type: 'text'; text: string }
+  | { type: 'tools'; calls: { name: string; input: unknown }[] }
   | { type: 'result'; result: ResultEvent }
 
 function stringOrNull(value: unknown): string | null {
@@ -139,6 +147,13 @@ export function parseStreamLine(line: string): StreamEvent | null {
       return { type: 'text', text: event.delta.text }
     }
     return null
+  }
+  if (data['type'] === 'assistant') {
+    const message = data['message'] as { content?: { type?: string; name?: string; input?: unknown }[] } | undefined
+    const calls = (message?.content ?? [])
+      .filter((block) => block.type === 'tool_use' && typeof block.name === 'string')
+      .map((block) => ({ name: block.name as string, input: block.input }))
+    return calls.length > 0 ? { type: 'tools', calls } : null
   }
   if (data['type'] === 'result') return { type: 'result', result: toResultEvent(data) }
   return null

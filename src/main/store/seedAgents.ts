@@ -1,4 +1,5 @@
 import type { AgentDraft } from '../../shared/agent'
+import { NO_TOOLS } from '../../shared/tools'
 
 /** Agents proposés au tout premier lancement. Ils se modifient et se suppriment comme les autres. */
 export const SEED_AGENTS: AgentDraft[] = [
@@ -27,7 +28,8 @@ export const SEED_AGENTS: AgentDraft[] = [
     model: 'claude-sonnet-5-5',
     effort: 'low',
     greeting: "Salut ! Qu'est-ce qui encombre ta tête aujourd'hui ?",
-    isFavorite: true
+    isFavorite: true,
+    tools: NO_TOOLS
   },
   {
     name: 'Basile',
@@ -54,7 +56,8 @@ export const SEED_AGENTS: AgentDraft[] = [
     model: 'claude-sonnet-5-5',
     effort: 'medium',
     greeting: 'Bonjour. Quel texte souhaitez-vous me confier ?',
-    isFavorite: false
+    isFavorite: false,
+    tools: NO_TOOLS
   },
   {
     name: 'Sacha',
@@ -81,6 +84,7 @@ export const SEED_AGENTS: AgentDraft[] = [
     model: 'claude-sonnet-5-5',
     effort: 'low',
     greeting: "Hey ! Sur quoi on se concentre ? Une seule chose, promis.",
-    isFavorite: false
+    isFavorite: false,
+    tools: NO_TOOLS
   }
 ]

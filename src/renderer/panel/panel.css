@@ -254,6 +254,20 @@ textarea.input {
   font-size: 12px;
 }
 
+/* Outils de l'assistant */
+.tools {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tool-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
 /* Pastilles */
 .chips {
   display: flex;

@@ -2,6 +2,7 @@ import type { AvatarState } from '../../../shared/avatar'
 import type { ChatEvent, ChatFailure } from '../../../shared/chat'
 import type { Turn } from '../../../shared/conversation'
 import type { Mood } from '../../../shared/replyParser'
+import type { ToolActivity } from '../../../shared/tools'
 
 export interface ChatMessage {
   id: number
@@ -12,6 +13,8 @@ export interface ChatMessage {
 export interface ChatState {
   messages: ChatMessage[]
   busy: boolean
+  /** Outil en cours d'utilisation, jusqu'à ce que le texte reprenne. */
+  activity: ToolActivity | null
   mood: AvatarState
   notice: string | null
   failure: (ChatFailure & { retryText: string }) | null
@@ -23,6 +26,7 @@ export interface ChatState {
 export const EMPTY_CHAT: ChatState = {
   messages: [],
   busy: false,
+  activity: null,
   mood: 'idle',
   notice: null,
   failure: null,
@@ -97,21 +101,25 @@ function appendDelta(state: ChatState, text: string): ChatState {
 export function applyChatEvent(state: ChatState, event: ChatEvent): ChatState {
   switch (event.type) {
     case 'delta':
-      return appendDelta(state, event.text)
+      return { ...appendDelta(state, event.text), activity: null }
+    case 'tool':
+      return { ...state, activity: event.activity }
     case 'done':
       return {
         ...state,
         busy: false,
+        activity: null,
         mood: MOOD_STATES[event.mood],
         remembered: event.facts,
         notice: event.truncated ? 'Réponse coupée : elle a atteint la longueur maximale.' : null
       }
     case 'stopped':
-      return { ...state, busy: false, mood: 'idle', notice: 'Réponse interrompue.' }
+      return { ...state, busy: false, activity: null, mood: 'idle', notice: 'Réponse interrompue.' }
     case 'error':
       return {
         ...state,
         busy: false,
+        activity: null,
         mood: 'sorry',
         failure: { ...event.failure, retryText: lastUserText(state.messages) }
       }

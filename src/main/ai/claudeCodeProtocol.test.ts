@@ -139,6 +139,37 @@ describe('parseStreamLine', () => {
   })
 })
 
+describe('outils web en mode abonnement', () => {
+  const web = { tools: 'WebSearch,WebFetch', settings: '{"hooks":{}}' }
+
+  it('sans outil, Claude Code ne reçoit ni outil ni réglage', () => {
+    const args = chatArgs('prompt', 'claude-haiku-5-5', 'low', null)
+    expect(args[args.indexOf('--tools') + 1]).toBe('')
+    expect(args).not.toContain('--settings')
+  })
+
+  it("avec outils, il reçoit ceux de l'agent et leur contrôle, en gardant son isolement", () => {
+    const args = chatArgs('prompt', 'claude-haiku-5-5', 'low', 'session', web)
+    expect(args[args.indexOf('--tools') + 1]).toBe('WebSearch,WebFetch')
+    expect(args[args.indexOf('--settings') + 1]).toBe('{"hooks":{}}')
+    expect(args).toContain('--strict-mcp-config')
+    expect(args[args.indexOf('--setting-sources') + 1]).toBe('')
+    expect(args[args.indexOf('--resume') + 1]).toBe('session')
+  })
+
+  it('lit les appels d\'outils des messages de Claude Code', () => {
+    const line = JSON.stringify({
+      type: 'assistant',
+      message: { content: [{ type: 'text', text: 'Je cherche.' }, { type: 'tool_use', name: 'WebSearch', input: { query: 'tarifs' } }] }
+    })
+    expect(parseStreamLine(line)).toEqual({ type: 'tools', calls: [{ name: 'WebSearch', input: { query: 'tarifs' } }] })
+  })
+
+  it('ignore un message sans appel d\'outil', () => {
+    expect(parseStreamLine(JSON.stringify({ type: 'assistant', message: { content: [{ type: 'text', text: 'Bonjour' }] } }))).toBeNull()
+  })
+})
+
 describe('isMissingSession', () => {
   it('reconnaît le résultat réel d\'une session disparue', () => {
     const event = parseStreamLine(

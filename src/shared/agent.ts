@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { ACCESSORIES, DEFAULT_AVATAR, EYE_STYLES, HEAD_SHAPES } from './avatar'
+import { AgentToolsSchema, NO_TOOLS } from './tools'
 
 export const CATEGORIES = ['Travail', 'Écriture', 'Code', 'Perso', 'Autre'] as const
 
@@ -64,6 +65,8 @@ export const AgentDraftSchema = z.object({
   effort: z.enum(['low', 'medium', 'high']),
   greeting: z.string().trim().max(400),
   isFavorite: z.boolean(),
+  /** Les fiches créées avant l'arrivée des outils n'en ont aucun. */
+  tools: AgentToolsSchema.default(NO_TOOLS),
   /** Prompt saisi à la main en mode avancé. Absent : prompt assemblé automatiquement. */
   systemPromptOverride: z.string().trim().min(1).max(12000).optional()
 })
@@ -94,7 +97,8 @@ export const EMPTY_DRAFT: AgentDraft = {
   model: 'claude-sonnet-5-5',
   effort: 'low',
   greeting: '',
-  isFavorite: false
+  isFavorite: false,
+  tools: NO_TOOLS
 }
 
 export function toDraft(agent: Agent): AgentDraft {

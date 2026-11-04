@@ -55,7 +55,20 @@ Après une mise à jour du code, relance `npm run build` : le lancement au déma
 
 ## Ce que peuvent faire les agents
 
-Les agents discutent et rien d'autre. Ils n'ont aucun outil : ni accès à tes fichiers, ni web, ni commandes. En mode abonnement, Claude Code démarre depuis un dossier vide, sans tes réglages, hooks, plugins ni serveurs MCP, et sans clé API ni autre variable sensible dans son environnement. Si Claude Code annonce une facturation sur une clé, l'app arrête la requête.
+Par défaut, un agent discute et rien d'autre : ni accès à tes fichiers, ni web, ni commandes. En mode abonnement, Claude Code démarre depuis un dossier vide, sans tes réglages, hooks, plugins ni serveurs MCP, et sans clé API ni autre variable sensible dans son environnement. Si Claude Code annonce une facturation sur une clé, l'app arrête la requête.
+
+### Outils web
+
+Dans l'assistant, à l'étape **Compétences**, tu peux activer pour chaque agent la **recherche web** et la **lecture de pages web**, avec une liste optionnelle de domaines autorisés. Un domaine couvre ses sous-domaines. Une ligne discrète dans le chat indique ce que fait l'agent.
+
+| | Abonnement | Clé API |
+|---|---|---|
+| Outils | `WebSearch` et `WebFetch` de Claude Code | Outils serveur `web_search` et `web_fetch` de l'API |
+| Coût | Compris dans ton forfait, dans ses limites | 10 $ les 1 000 recherches, plus les jetons des pages lues |
+| Filtre de domaines | Appliqué avant chaque appel par `web-guard.cjs`, un contrôle de l'app | `allowed_domains` de l'API |
+| Limite par tour | Aucune | 5 recherches et 5 lectures, 20 000 jetons par page |
+
+Une page web peut contenir des instructions malveillantes. Sans liste de domaines, un agent qui en lit une pourrait être poussé à envoyer ce qu'il sait vers un autre site, surtout en mode abonnement, où `WebFetch` n'a pas la protection de l'API qui limite les adresses à celles déjà vues dans la conversation. Pour un agent qui connaît des informations sensibles, renseigne la liste. Une fiche exportée contient ses outils : vérifie-les quand tu importes un agent.
 
 ## Où sont tes données
 
@@ -68,6 +81,7 @@ Tout est dans `~/Library/Application Support/Agent Toolbox/`, en JSON non chiffr
 | `memory/<agent>.json` | Faits retenus |
 | `settings.json` | Position de l'icône, raccourci, mode de connexion |
 | `secrets.bin` | Clé API chiffrée, si tu en as enregistré une |
+| `tools/web-guard.cjs` | Contrôle des outils web, réécrit à chaque usage |
 
 Deux emplacements en dehors de ce dossier :
 
