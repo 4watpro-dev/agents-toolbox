@@ -2,6 +2,7 @@ import { motion } from 'motion/react'
 import { useEffect, useState } from 'react'
 import type { Agent } from '../../shared/agent'
 import type { Corner, PanelState } from '../../shared/ipc'
+import { AvatarPausedContext } from '../avatar/Avatar'
 import { AgentDetails } from './AgentDetails'
 import { AgentSwitcher } from './AgentSwitcher'
 import { ChatView } from './chat/ChatView'
@@ -27,7 +28,7 @@ type View =
 export function Panel(): React.JSX.Element {
   const [state, setState] = useState<PanelState>({ open: false, corner: 'bottom-right', requestedAt: 0 })
   const [view, setView] = useState<View>({ name: 'gallery' })
-  const { agents, error, save, remove, setFavorite } = useAgents()
+  const { agents, error, reload, save, remove, setFavorite } = useAgents()
   const openSettings = (): void =>
     setView((current) => (current.name === 'settings' ? current : { name: 'settings', returnTo: current }))
 
@@ -64,6 +65,7 @@ export function Panel(): React.JSX.Element {
     view.name === 'agent' || view.name === 'details' ? agents.find((agent) => agent.id === view.agentId) : undefined
 
   return (
+    <AvatarPausedContext.Provider value={!state.open}>
     <motion.main
       // Panneau caché : ses animations CSS s'arrêtent pour ne pas consommer de CPU.
       className={state.open ? 'panel' : 'panel panel-closed'}
@@ -78,7 +80,7 @@ export function Panel(): React.JSX.Element {
         </p>
       )}
       {view.name === 'settings' ? (
-        <SettingsView panelOpen={state.open} onBack={() => setView(view.returnTo)} />
+        <SettingsView panelOpen={state.open} onBack={() => setView(view.returnTo)} onAgentsChanged={reload} />
       ) : view.name === 'wizard' ? (
         <AgentWizard
           agent={view.agent}
@@ -127,5 +129,6 @@ export function Panel(): React.JSX.Element {
         />
       )}
     </motion.main>
+    </AvatarPausedContext.Provider>
   )
 }

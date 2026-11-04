@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { CATEGORIES, type Agent } from '../../shared/agent'
 import { filterAgents } from '../../shared/gallery'
+import type { TransferResult } from '../../shared/ipc'
 import { AgentCard } from './AgentCard'
 
 interface GalleryProps {
@@ -26,6 +27,7 @@ export function Gallery({
 }: GalleryProps): React.JSX.Element {
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState<string | null>(null)
+  const [transferResult, setTransferResult] = useState<TransferResult | null>(null)
   const search = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -75,6 +77,11 @@ export function Gallery({
       </header>
 
       <div className="view-body">
+        {transferResult && !(transferResult.ok && transferResult.value.canceled) && (
+          <p className={transferResult.ok ? 'gallery-notice' : 'gallery-notice form-error'} role="status">
+            {transferResult.ok ? transferResult.value.message : transferResult.message}
+          </p>
+        )}
         {visible.length > 0 ? (
           <ul className="card-grid">
             {visible.map((agent) => (
@@ -83,6 +90,7 @@ export function Gallery({
                 agent={agent}
                 onOpen={() => onOpen(agent)}
                 onEdit={() => onEdit(agent)}
+                onExport={() => void window.toolbox.agents.exportToFile(agent.id).then(setTransferResult)}
                 onRemove={() => onRemove(agent)}
                 onToggleFavorite={() => onToggleFavorite(agent)}
               />

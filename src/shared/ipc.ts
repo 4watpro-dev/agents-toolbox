@@ -35,6 +35,8 @@ export const IPC = {
   agentsRemove: 'agents:remove',
   agentsSetFavorite: 'agents:set-favorite',
   agentsMarkUsed: 'agents:mark-used',
+  agentsExport: 'agents:export',
+  agentsImport: 'agents:import',
   keyStatus: 'key:status',
   keySave: 'key:save',
   keyDelete: 'key:delete',
@@ -51,6 +53,8 @@ export const IPC = {
 } as const
 
 export type Result<T = undefined> = { ok: true; value: T } | { ok: false; message: string }
+
+export type TransferResult = Result<{ canceled: boolean; message: string }>
 
 /** `subscription` passe par Claude Code et ton forfait ; `api` par une clé facturée à l'usage. */
 export const PROVIDERS = ['subscription', 'api'] as const
@@ -124,6 +128,9 @@ export interface AgentsApi {
   remove(id: string): Promise<void>
   setFavorite(id: string, isFavorite: boolean): Promise<Agent>
   markUsed(id: string): Promise<void>
+  /** `id` nul : exporte tous les agents. */
+  exportToFile(id: string | null): Promise<TransferResult>
+  importFromFile(): Promise<TransferResult>
 }
 
 /** La clé va du renderer vers le main, jamais en sens inverse. */

@@ -3,6 +3,7 @@ import { registerAgentIpc } from './agentIpc'
 import { stopAllClaudeCode } from './ai/claudeCode'
 import { registerAiIpc } from './aiIpc'
 import { registerSettingsIpc } from './settingsIpc'
+import { registerTransferIpc } from './transferIpc'
 import { startShortcut } from './shortcut'
 import { createTray } from './tray'
 import { createWindows, openPanel } from './windows'
@@ -22,6 +23,7 @@ if (!app.requestSingleInstanceLock()) {
     registerAgentIpc()
     registerAiIpc()
     registerSettingsIpc()
+    registerTransferIpc()
     createWindows()
     createTray()
     startShortcut()

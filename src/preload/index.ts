@@ -45,7 +45,9 @@ const api: ToolboxApi = {
     save: (id, draft) => ipcRenderer.invoke(IPC.agentsSave, id, draft),
     remove: (id) => ipcRenderer.invoke(IPC.agentsRemove, id),
     setFavorite: (id, isFavorite) => ipcRenderer.invoke(IPC.agentsSetFavorite, id, isFavorite),
-    markUsed: (id) => ipcRenderer.invoke(IPC.agentsMarkUsed, id)
+    markUsed: (id) => ipcRenderer.invoke(IPC.agentsMarkUsed, id),
+    exportToFile: (id) => ipcRenderer.invoke(IPC.agentsExport, id),
+    importFromFile: () => ipcRenderer.invoke(IPC.agentsImport)
   },
   key: {
     isSet: () => ipcRenderer.invoke(IPC.keyStatus),

@@ -7,13 +7,14 @@ interface AgentCardProps {
   agent: Agent
   onOpen(): void
   onEdit(): void
+  onExport(): void
   onRemove(): void
   onToggleFavorite(): void
 }
 
 type Overlay = 'none' | 'menu' | 'confirm'
 
-export function AgentCard({ agent, onOpen, onEdit, onRemove, onToggleFavorite }: AgentCardProps): React.JSX.Element {
+export function AgentCard({ agent, onOpen, onEdit, onExport, onRemove, onToggleFavorite }: AgentCardProps): React.JSX.Element {
   const [hovered, setHovered] = useState(false)
   const [overlay, setOverlay] = useState<Overlay>('none')
 
@@ -60,6 +61,16 @@ export function AgentCard({ agent, onOpen, onEdit, onRemove, onToggleFavorite }:
         <div className="card-menu" role="menu">
           <button type="button" role="menuitem" onClick={onEdit}>
             Modifier
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              setOverlay('none')
+              onExport()
+            }}
+          >
+            Exporter
           </button>
           <button type="button" role="menuitem" className="danger" onClick={() => setOverlay('confirm')}>
             Supprimer

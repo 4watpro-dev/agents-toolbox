@@ -4,6 +4,7 @@ import type { Agent, AgentDraft } from '../../shared/agent'
 interface UseAgents {
   agents: Agent[]
   error: string | null
+  reload(): void
   save(id: string | null, draft: AgentDraft): Promise<void>
   remove(agent: Agent): void
   setFavorite(id: string, isFavorite: boolean): void
@@ -15,9 +16,11 @@ export function useAgents(): UseAgents {
   const [agents, setAgents] = useState<Agent[]>([])
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
+  const reload = useCallback(() => {
     window.toolbox.agents.list().then(setAgents, () => setError('Impossible de charger les agents.'))
   }, [])
+
+  useEffect(reload, [reload])
 
   const replace = useCallback((agent: Agent) => {
     setAgents((current) =>
@@ -58,5 +61,5 @@ export function useAgents(): UseAgents {
     [replace]
   )
 
-  return { agents, error, save, remove, setFavorite }
+  return { agents, error, reload, save, remove, setFavorite }
 }

@@ -889,6 +889,18 @@ textarea.input {
   font-weight: 500;
 }
 
+.gallery-notice {
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.settings-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
 /* Réglages */
 .settings-section {
   display: flex;

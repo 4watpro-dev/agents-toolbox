@@ -1,5 +1,5 @@
 import { join } from 'node:path'
-import { BrowserWindow, ipcMain, screen, shell, type Display } from 'electron'
+import { app, BrowserWindow, ipcMain, screen, shell, type Display } from 'electron'
 import { z } from 'zod'
 import { IPC, type Corner, type PanelState } from '../shared/ipc'
 import { cornerPosition, nearestCorner, panelPosition } from './snap'
@@ -36,7 +36,7 @@ const securePreferences = {
   backgroundThrottling: false
 }
 
-function loadPage(window: BrowserWindow, page: 'widget' | 'panel' | 'demo'): void {
+function loadPage(window: BrowserWindow, page: 'widget' | 'panel'): void {
   const devServer = process.env['ELECTRON_RENDERER_URL']
   if (devServer) {
     void window.loadURL(`${devServer}/${page}.html`)
@@ -121,6 +121,20 @@ export function openPanel(requestedAt = Date.now()): void {
   panel.focus()
 }
 
+/**
+ * Une boîte de dialogue système s'ouvrirait sous le panneau, qui reste au-dessus de
+ * tout. On le cache le temps du dialogue, puis on le rouvre sur le résultat.
+ */
+export async function withPanelHidden<T>(action: () => Promise<T>): Promise<T> {
+  closePanel()
+  app.focus({ steal: true })
+  try {
+    return await action()
+  } finally {
+    openPanel()
+  }
+}
+
 export function openSettingsInPanel(): void {
   panel.webContents.send(IPC.panelNavigate, 'settings')
   openPanel()
@@ -201,6 +215,7 @@ function createWidget(): BrowserWindow {
     webPreferences: securePreferences
   })
   floatAboveEverything(window)
+  keepNavigationInApp(window)
   window.once('ready-to-show', () => window.showInactive())
   loadPage(window, 'widget')
   return window
@@ -231,26 +246,6 @@ function createPanel(): BrowserWindow {
   })
   loadPage(window, 'panel')
   return window
-}
-
-let demo: BrowserWindow | null = null
-
-export function openDemo(): void {
-  if (demo) {
-    demo.show()
-    demo.focus()
-    return
-  }
-  demo = new BrowserWindow({
-    width: 960,
-    height: 760,
-    title: "Démo de l'avatar",
-    webPreferences: securePreferences
-  })
-  demo.on('closed', () => {
-    demo = null
-  })
-  loadPage(demo, 'demo')
 }
 
 export function sendWidgetAvatar(avatar: AvatarConfig): void {

@@ -1,5 +1,5 @@
 import { AnimatePresence, motion, MotionConfig } from 'motion/react'
-import { useId } from 'react'
+import { createContext, useContext, useId } from 'react'
 import {
   DEFAULT_AVATAR,
   faceColor,
@@ -24,6 +24,9 @@ const HEADS: Record<HeadShape, { width: number; height: number; radius: number }
 }
 
 const SPRING = { type: 'spring', stiffness: 260, damping: 20 } as const
+
+/** Vrai quand l'avatar n'est pas visible : plus de clignement, donc plus de rendu inutile. */
+export const AvatarPausedContext = createContext(false)
 
 interface AvatarProps {
   config?: AvatarConfig
@@ -50,7 +53,8 @@ export function Avatar({
   label
 }: AvatarProps): React.JSX.Element {
   const expression = EXPRESSIONS[state]
-  const blinking = useBlink(expression.blinks)
+  const paused = useContext(AvatarPausedContext)
+  const blinking = useBlink(expression.blinks && !paused)
   const uid = useId()
   const head = HEADS[config.headShape]
   const ink = faceColor(config.headColor)

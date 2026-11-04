@@ -3,10 +3,12 @@ import type { Provider } from '../../shared/ipc'
 import { ApiKeySettings } from './ApiKeySettings'
 import { PreferenceSettings } from './PreferenceSettings'
 import { SubscriptionSettings } from './SubscriptionSettings'
+import { TransferSettings } from './TransferSettings'
 
 interface SettingsViewProps {
   panelOpen: boolean
   onBack(): void
+  onAgentsChanged(): void
 }
 
 const PROVIDER_LABELS: Record<Provider, string> = {
@@ -14,7 +16,7 @@ const PROVIDER_LABELS: Record<Provider, string> = {
   api: "Clé API (payant à l'usage)"
 }
 
-export function SettingsView({ panelOpen, onBack }: SettingsViewProps): React.JSX.Element {
+export function SettingsView({ panelOpen, onBack, onAgentsChanged }: SettingsViewProps): React.JSX.Element {
   const [provider, setProvider] = useState<Provider | null>(null)
 
   useEffect(() => {
@@ -54,6 +56,7 @@ export function SettingsView({ panelOpen, onBack }: SettingsViewProps): React.JS
         {provider === 'subscription' && <SubscriptionSettings panelOpen={panelOpen} />}
         {provider === 'api' && <ApiKeySettings />}
         <PreferenceSettings panelOpen={panelOpen} />
+        <TransferSettings onImported={onAgentsChanged} />
       </div>
     </div>
   )
