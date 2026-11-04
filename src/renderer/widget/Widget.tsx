@@ -1,4 +1,5 @@
 import { useRef, useState, type PointerEvent } from 'react'
+import { Avatar } from '../avatar/Avatar'
 
 const DRAG_THRESHOLD_PX = 4
 
@@ -51,14 +52,8 @@ export function Widget(): React.JSX.Element {
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerUp}
     >
-      {/* Icône provisoire : l'avatar animé arrive au jalon 2. */}
-      <svg viewBox="0 0 56 56" aria-hidden="true">
-        <line x1="28" y1="15" x2="28" y2="9" stroke="#b9bfc9" strokeWidth="2" strokeLinecap="round" />
-        <circle cx="28" cy="8" r="3" fill="#3b8cff" />
-        <rect x="11" y="15" width="34" height="28" rx="14" fill="#fff" stroke="#e4e7ec" />
-        <ellipse cx="22" cy="29" rx="3" ry="4.5" fill="#20242c" />
-        <ellipse cx="34" cy="29" rx="3" ry="4.5" fill="#20242c" />
-      </svg>
+      {/* Au jalon 3, l'icône affichera l'avatar du dernier agent utilisé. */}
+      <Avatar size={46} groundShadow={false} floating={false} />
     </button>
   )
 }

@@ -36,7 +36,7 @@ const securePreferences = {
   backgroundThrottling: false
 }
 
-function loadPage(window: BrowserWindow, page: 'widget' | 'panel'): void {
+function loadPage(window: BrowserWindow, page: 'widget' | 'panel' | 'demo'): void {
   const devServer = process.env['ELECTRON_RENDERER_URL']
   if (devServer) {
     void window.loadURL(`${devServer}/${page}.html`)
@@ -208,6 +208,26 @@ function createPanel(): BrowserWindow {
   })
   loadPage(window, 'panel')
   return window
+}
+
+let demo: BrowserWindow | null = null
+
+export function openDemo(): void {
+  if (demo) {
+    demo.show()
+    demo.focus()
+    return
+  }
+  demo = new BrowserWindow({
+    width: 960,
+    height: 760,
+    title: "Démo de l'avatar",
+    webPreferences: securePreferences
+  })
+  demo.on('closed', () => {
+    demo = null
+  })
+  loadPage(demo, 'demo')
 }
 
 export function createWindows(): void {

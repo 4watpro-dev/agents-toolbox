@@ -1,0 +1,50 @@
+.avatar {
+  display: block;
+  overflow: visible;
+}
+
+.avatar-ground {
+  fill: rgb(16 24 40 / 16%);
+  filter: blur(2px);
+}
+
+/* Léger flottement au repos. */
+.avatar-float {
+  animation: avatar-float 3.6s ease-in-out infinite;
+}
+
+@keyframes avatar-float {
+  50% {
+    transform: translateY(-2.2px);
+  }
+}
+
+/* Halo de l'antenne : fixe pendant l'écoute, pulsé pendant la réflexion. */
+.avatar-halo {
+  opacity: 0.32;
+  filter: blur(1.5px);
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.avatar-halo-pulse,
+.avatar-ball-pulse {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: avatar-pulse 1.1s ease-in-out infinite;
+}
+
+@keyframes avatar-pulse {
+  50% {
+    opacity: 0.25;
+    transform: scale(1.25);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .avatar-float,
+  .avatar-halo-pulse,
+  .avatar-ball-pulse {
+    animation: none;
+  }
+}

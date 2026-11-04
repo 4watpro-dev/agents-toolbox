@@ -1,6 +1,6 @@
 import { join } from 'node:path'
 import { app, Menu, nativeImage, Tray } from 'electron'
-import { openPanel } from './windows'
+import { openDemo, openPanel } from './windows'
 
 // Gardé au niveau du module : sinon le ramasse-miettes fait disparaître l'icône.
 let tray: Tray | null = null
@@ -14,6 +14,7 @@ export function createTray(): void {
   tray.setContextMenu(
     Menu.buildFromTemplate([
       { label: 'Ouvrir', click: () => openPanel() },
+      { label: "Démo de l'avatar", click: () => openDemo() },
       { type: 'separator' },
       { label: 'Quitter', click: () => app.quit() }
     ])
