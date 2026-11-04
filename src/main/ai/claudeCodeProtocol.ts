@@ -1,5 +1,6 @@
 import type { ChatFailure } from '../../shared/chat'
 import type { Turn } from '../../shared/conversation'
+import type { ResolvedConnector } from './toolGuard'
 
 /**
  * Seules ces variables passent à Claude Code. Une clé API présente dans
@@ -44,11 +45,12 @@ export function chatArgs(
   model: string,
   effort: string,
   resumeId: string | null,
-  web: { tools: string; settings: string } | null = null
+  web: { tools: string; settings: string; mcpConfig: string | null } | null = null
 ): string[] {
   return [
     ...isolationArgs(systemPrompt, model, effort, web?.tools),
     ...(web ? ['--settings', web.settings] : []),
+    ...(web?.mcpConfig ? ['--mcp-config', web.mcpConfig] : []),
     '--output-format',
     'stream-json',
     '--include-partial-messages',
@@ -80,6 +82,8 @@ export interface TurnContext {
   /** Échanges déjà conservés : servent quand la session n'est plus en mémoire. */
   turns: Turn[]
   resumeId: string | null
+  /** Connecteurs de l'agent, jetons compris. Seul le mode abonnement s'en sert. */
+  connectors: ResolvedConnector[]
 }
 
 /** Claude Code efface ses anciennes sessions : la conversation doit pouvoir leur survivre. */
@@ -107,7 +111,7 @@ export interface ResultEvent {
 }
 
 export type StreamEvent =
-  | { type: 'init'; sessionId: string | null; apiKeySource: string | null }
+  | { type: 'init'; sessionId: string | null; apiKeySource: string | null; servers: { name: string; status: string }[] }
   | { type: 'text'; text: string }
   | { type: 'tools'; calls: { name: string; input: unknown }[] }
   | { type: 'result'; result: ResultEvent }
@@ -139,7 +143,8 @@ export function parseStreamLine(line: string): StreamEvent | null {
     return null
   }
   if (data['type'] === 'system' && data['subtype'] === 'init') {
-    return { type: 'init', sessionId: stringOrNull(data['session_id']), apiKeySource: stringOrNull(data['apiKeySource']) }
+    const servers = Array.isArray(data['mcp_servers']) ? (data['mcp_servers'] as { name: string; status: string }[]) : []
+    return { type: 'init', sessionId: stringOrNull(data['session_id']), apiKeySource: stringOrNull(data['apiKeySource']), servers }
   }
   if (data['type'] === 'stream_event') {
     const event = data['event'] as { type?: string; delta?: { type?: string; text?: string } } | undefined
@@ -156,6 +161,13 @@ export function parseStreamLine(line: string): StreamEvent | null {
     return calls.length > 0 ? { type: 'tools', calls } : null
   }
   if (data['type'] === 'result') return { type: 'result', result: toResultEvent(data) }
+  return null
+}
+
+/** Message à afficher pour un connecteur qui n'a pas pu se connecter. */
+export function connectorProblem(name: string, status: string): string | null {
+  if (status === 'failed') return `Le connecteur ${name} est injoignable : l'agent ne peut pas s'en servir pour ce message. Vérifie son adresse et son jeton dans les réglages.`
+  if (status === 'needs-auth') return `Le connecteur ${name} demande une connexion que l'app ne gère pas. Ajoute un jeton dans les réglages.`
   return null
 }
 

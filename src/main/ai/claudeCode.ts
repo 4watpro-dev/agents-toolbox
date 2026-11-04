@@ -10,12 +10,13 @@ import type { ChatEvent, ChatFailure } from '../../shared/chat'
 import type { Result, SubscriptionStatus } from '../../shared/ipc'
 import type { Turn } from '../../shared/conversation'
 import { createReplyParser } from '../../shared/replyParser'
-import { describeToolUse, usesWebTools, type AgentTools } from '../../shared/tools'
+import { describeToolUse, usesWebTools } from '../../shared/tools'
 import {
   chatArgs,
   classifyResult,
   cleanEnv,
   CLI_MISSING,
+  connectorProblem,
   isMissingSession,
   isPlanBilled,
   NOT_ON_PLAN,
@@ -27,7 +28,8 @@ import {
 } from './claudeCodeProtocol'
 import { GENERATION_INSTRUCTIONS, GENERATION_MODEL } from './generationPrompt'
 import { GeneratedAgentSchema, normalizeGenerated } from './normalizeGenerated'
-import { WEB_GUARD_SCRIPT, webToolArgs } from './webGuard'
+import { openToolRun } from './toolBridge'
+import { connectorConfig, TOOL_GUARD_SCRIPT, toolGuardArgs } from './toolGuard'
 
 type Emit = (event: ChatEvent) => void
 
@@ -75,18 +77,18 @@ function neutralDirectory(): string {
 }
 
 /** Le contrôle des outils vit hors du dossier neutre, que Claude Code garde vide. */
-function webArgs(tools: AgentTools): { tools: string; settings: string } {
+function writeToolGuard(): string {
   const directory = join(app.getPath('userData'), 'tools')
   mkdirSync(directory, { recursive: true })
-  const script = join(directory, 'web-guard.cjs')
-  writeFileSync(script, WEB_GUARD_SCRIPT, { mode: 0o600 })
-  return webToolArgs(tools, process.execPath, script)
+  const script = join(directory, 'tool-guard.cjs')
+  writeFileSync(script, TOOL_GUARD_SCRIPT, { mode: 0o600 })
+  return script
 }
 
-function launch(binary: string, args: string[]): ChildProcess {
+function launch(binary: string, args: string[], extraEnv: Record<string, string> = {}): ChildProcess {
   const child = spawn(binary, args, {
     cwd: neutralDirectory(),
-    env: cleanEnv(process.env),
+    env: { ...cleanEnv(process.env), ...extraEnv },
     stdio: ['pipe', 'pipe', 'pipe']
   })
   // Une option refusée n'est signalée que là : sans ce journal, la cause reste invisible.
@@ -115,11 +117,22 @@ export function sendViaClaudeCode(
   sessions.set(sessionId, session)
   const usedResume = session.resumeId !== null
   const prompt = session.resumeId ? text : promptWithHistory(session.turns, text)
-  const web = usesWebTools(agent.tools) ? webArgs(agent.tools) : null
+  const { mcpConfig, env, labels } = connectorConfig(context.connectors)
+  const toolRun = mcpConfig
+    ? openToolRun({
+        labels,
+        onConfirm: (confirmation) => emit({ sessionId, type: 'confirm', confirmation }),
+        onResolved: (id, outcome) => emit({ sessionId, type: 'confirmed', id, outcome })
+      })
+    : null
+  const guarded = usesWebTools(agent.tools) || toolRun !== null
+  const web = guarded
+    ? toolGuardArgs(agent.tools, mcpConfig, toolRun && { socket: toolRun.socket, runId: toolRun.runId }, process.execPath, writeToolGuard())
+    : null
   const args = chatArgs(context.systemPrompt, agent.model, agent.effort, session.resumeId, web)
 
   const parser = createReplyParser()
-  const child = launch(binary, args)
+  const child = launch(binary, args, env)
   let visibleText = ''
   let newSessionId: string | null = null
   let result: ResultEvent | null = null
@@ -130,6 +143,7 @@ export function sendViaClaudeCode(
 
   const stop = (): void => {
     stopped = true
+    toolRun?.close()
     child.kill('SIGINT')
     killTimer = setTimeout(() => child.kill('SIGKILL'), STOP_GRACE_MS)
   }
@@ -146,6 +160,10 @@ export function sendViaClaudeCode(
         blocked = NOT_ON_PLAN
         child.kill('SIGKILL')
       }
+      for (const server of event.servers) {
+        const problem = connectorProblem(labels[server.name] ?? server.name, server.status)
+        if (problem) emit({ sessionId, type: 'notice', text: problem })
+      }
     } else if (event.type === 'text') {
       const visible = parser.push(event.text)
       if (visible) {
@@ -154,7 +172,7 @@ export function sendViaClaudeCode(
       }
     } else if (event.type === 'tools') {
       for (const call of event.calls) {
-        const activity = describeToolUse(call.name, call.input)
+        const activity = describeToolUse(call.name, call.input, labels)
         if (activity) emit({ sessionId, type: 'tool', activity })
       }
     } else {
@@ -172,6 +190,7 @@ export function sendViaClaudeCode(
   child.on('close', () => {
     lines.close()
     if (killTimer) clearTimeout(killTimer)
+    toolRun?.close()
     running.delete(sessionId)
     // Session réinitialisée entre-temps : plus personne n'attend cette réponse.
     if (!sessions.has(sessionId)) return

@@ -3,6 +3,7 @@ import { clipboard, ipcMain, type WebContents } from 'electron'
 import { z } from 'zod'
 import { AgentDraftSchema } from '../shared/agent'
 import type { ChatEvent } from '../shared/chat'
+import { ConnectorInputSchema, type Connector } from '../shared/connectors'
 import { IPC, PROVIDERS, type Result, type SaveKeyResult } from '../shared/ipc'
 import { buildSystemPrompt } from '../shared/systemPrompt'
 import { forgetApiSessions, sendMessage, resetSession, stopMessage } from './ai/chat'
@@ -19,6 +20,8 @@ import {
 import { createClient, resetClient } from './ai/client'
 import { classifyError } from './ai/errors'
 import { generateAgent } from './ai/generate'
+import { answerConfirmation } from './ai/toolBridge'
+import { listConnectors, removeConnector, resolveConnectors, saveConnector } from './store/connectors'
 import {
   appendTurns,
   deleteConversation,
@@ -78,10 +81,14 @@ function startTurn(sender: WebContents, sessionId: string, agentIdRaw: unknown, 
 
   const conversation = agentId ? getConversation(agentId, sessionId) : null
   const facts = agentId ? getFacts(agentId) : []
+  const wanted = resolveConnectors(draft.tools.connectors)
+  // L'API exécuterait les actions de ses connecteurs sans passer par une confirmation.
+  const connectors = usesSubscription() ? wanted : []
   const context = {
-    systemPrompt: buildSystemPrompt(draft, facts, { remember: agentId !== null }),
+    systemPrompt: buildSystemPrompt(draft, facts, { remember: agentId !== null, connectors: connectors.map((c) => c.name) }),
     turns: conversation?.messages ?? [],
-    resumeId: conversation?.claudeSessionId ?? null
+    resumeId: conversation?.claudeSessionId ?? null,
+    connectors
   }
 
   const turn = { agentId, visibleText: '', afterTool: false }
@@ -93,6 +100,8 @@ function startTurn(sender: WebContents, sessionId: string, agentIdRaw: unknown, 
     let outgoing = event
     if (event.type === 'tool') {
       turn.afterTool = true
+    } else if (event.type === 'confirm' || event.type === 'confirmed' || event.type === 'notice') {
+      // Le tour continue : ces événements informent seulement l'interface.
     } else if (event.type === 'delta') {
       // Le texte qui suit un outil ne doit pas se coller à la phrase qui l'annonçait.
       const text = turn.afterTool && turn.visibleText ? `\n\n${event.text}` : event.text
@@ -131,6 +140,9 @@ function startTurn(sender: WebContents, sessionId: string, agentIdRaw: unknown, 
     if (!sender.isDestroyed()) sender.send(IPC.chatEvent, outgoing)
   }
 
+  if (wanted.length > connectors.length) {
+    emit({ sessionId, type: 'notice', text: "Les connecteurs sont désactivés en mode clé API, faute de pouvoir y demander ta confirmation. Repasse sur ton abonnement pour t'en servir." })
+  }
   if (usesSubscription()) sendViaClaudeCode(sessionId, draft, text, emit, context)
   else void sendMessage(sessionId, draft, text, emit, context)
 }
@@ -158,6 +170,19 @@ export function registerAiIpc(): void {
     stopMessage(session)
   })
   ipcMain.on(IPC.chatReset, (_event, sessionId: unknown) => cancelSession(SessionIdSchema.parse(sessionId)))
+  ipcMain.on(IPC.chatConfirm, (_event, id: unknown, approved: unknown) => {
+    answerConfirmation(z.uuid().parse(id), z.boolean().parse(approved))
+  })
+
+  ipcMain.handle(IPC.connectorsList, () => listConnectors())
+  ipcMain.handle(IPC.connectorsSave, (_event, id: unknown, input: unknown): Result<Connector> => {
+    const parsed = ConnectorInputSchema.safeParse(input)
+    if (!parsed.success) {
+      return { ok: false, message: "Vérifie le nom et l'adresse : https obligatoire, sans identifiant ni jeton dans l'adresse." }
+    }
+    return saveConnector(id === null ? null : z.uuid().parse(id), parsed.data)
+  })
+  ipcMain.handle(IPC.connectorsRemove, (_event, id: unknown) => removeConnector(z.uuid().parse(id)))
 
   ipcMain.handle(IPC.conversationsList, (_event, agentId: unknown) => listConversations(AgentIdSchema.parse(agentId)))
   ipcMain.handle(IPC.conversationsGet, (_event, agentId: unknown, id: unknown) =>

@@ -6,19 +6,19 @@ const event = (value: unknown): Event => value as Event
 
 describe('webTools', () => {
   it("n'envoie que les outils activés", () => {
-    expect(webTools({ webSearch: false, webFetch: false, allowedDomains: [] })).toEqual([])
-    expect(webTools({ webSearch: true, webFetch: false, allowedDomains: [] }).map((tool) => tool.type)).toEqual(['web_search_20250305'])
-    expect(webTools({ webSearch: false, webFetch: true, allowedDomains: [] }).map((tool) => tool.type)).toEqual(['web_fetch_20250910'])
+    expect(webTools({ webSearch: false, webFetch: false, allowedDomains: [], connectors: [] })).toEqual([])
+    expect(webTools({ webSearch: true, webFetch: false, allowedDomains: [], connectors: [] }).map((tool) => tool.type)).toEqual(['web_search_20250305'])
+    expect(webTools({ webSearch: false, webFetch: true, allowedDomains: [], connectors: [] }).map((tool) => tool.type)).toEqual(['web_fetch_20250910'])
   })
 
   it('applique la même liste de domaines aux deux outils', () => {
-    for (const tool of webTools({ webSearch: true, webFetch: true, allowedDomains: ['brevo.com'] })) {
+    for (const tool of webTools({ webSearch: true, webFetch: true, allowedDomains: ['brevo.com'], connectors: [] })) {
       expect(tool).toMatchObject({ allowed_domains: ['brevo.com'] })
     }
   })
 
   it("n'envoie pas de liste vide, que l'API lirait comme un filtre", () => {
-    for (const tool of webTools({ webSearch: true, webFetch: true, allowedDomains: [] })) {
+    for (const tool of webTools({ webSearch: true, webFetch: true, allowedDomains: [], connectors: [] })) {
       expect(tool).not.toHaveProperty('allowed_domains')
     }
   })

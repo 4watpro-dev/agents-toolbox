@@ -1,5 +1,6 @@
 import type { AvatarState } from '../../../shared/avatar'
 import type { ChatEvent, ChatFailure } from '../../../shared/chat'
+import type { Confirmation, ConfirmationOutcome } from '../../../shared/connectors'
 import type { Turn } from '../../../shared/conversation'
 import type { Mood } from '../../../shared/replyParser'
 import type { ToolActivity } from '../../../shared/tools'
@@ -10,11 +11,18 @@ export interface ChatMessage {
   text: string
 }
 
+export interface ChatAction extends Confirmation {
+  /** `null` : en attente d'un clic. */
+  outcome: ConfirmationOutcome | null
+}
+
 export interface ChatState {
   messages: ChatMessage[]
   busy: boolean
   /** Outil en cours d'utilisation, jusqu'à ce que le texte reprenne. */
   activity: ToolActivity | null
+  /** Actions soumises à confirmation pendant ce tour. */
+  actions: ChatAction[]
   mood: AvatarState
   notice: string | null
   failure: (ChatFailure & { retryText: string }) | null
@@ -27,6 +35,7 @@ export const EMPTY_CHAT: ChatState = {
   messages: [],
   busy: false,
   activity: null,
+  actions: [],
   mood: 'idle',
   notice: null,
   failure: null,
@@ -62,6 +71,7 @@ export function sendingMessage(state: ChatState, text: string): ChatState {
   return {
     ...base,
     busy: true,
+    actions: [],
     mood: 'idle',
     notice: null,
     failure: null,
@@ -98,8 +108,22 @@ function appendDelta(state: ChatState, text: string): ChatState {
   }
 }
 
+/** Une carte restée ouverte à la fin du tour ne peut plus rien déclencher. */
+function closeActions(actions: ChatAction[]): ChatAction[] {
+  return actions.map((action) => (action.outcome ? action : { ...action, outcome: 'cancelled' }))
+}
+
 export function applyChatEvent(state: ChatState, event: ChatEvent): ChatState {
   switch (event.type) {
+    case 'confirm':
+      return { ...state, actions: [...state.actions, { ...event.confirmation, outcome: null }] }
+    case 'confirmed':
+      return {
+        ...state,
+        actions: state.actions.map((action) => (action.id === event.id ? { ...action, outcome: event.outcome } : action))
+      }
+    case 'notice':
+      return { ...state, notice: event.text }
     case 'delta':
       return { ...appendDelta(state, event.text), activity: null }
     case 'tool':
@@ -109,17 +133,19 @@ export function applyChatEvent(state: ChatState, event: ChatEvent): ChatState {
         ...state,
         busy: false,
         activity: null,
+        actions: closeActions(state.actions),
         mood: MOOD_STATES[event.mood],
         remembered: event.facts,
-        notice: event.truncated ? 'Réponse coupée : elle a atteint la longueur maximale.' : null
+        notice: event.truncated ? 'Réponse coupée : elle a atteint la longueur maximale.' : state.notice
       }
     case 'stopped':
-      return { ...state, busy: false, activity: null, mood: 'idle', notice: 'Réponse interrompue.' }
+      return { ...state, busy: false, activity: null, actions: closeActions(state.actions), mood: 'idle', notice: 'Réponse interrompue.' }
     case 'error':
       return {
         ...state,
         busy: false,
         activity: null,
+        actions: closeActions(state.actions),
         mood: 'sorry',
         failure: { ...event.failure, retryText: lastUserText(state.messages) }
       }

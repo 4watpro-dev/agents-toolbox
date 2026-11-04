@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { parseConnectorTool } from './connectors'
 
 /**
  * Nom de domaine nu, en ASCII : les caractères Unicode permettraient de contourner
@@ -12,12 +13,14 @@ export const AgentToolsSchema = z.object({
   webSearch: z.boolean(),
   webFetch: z.boolean(),
   /** Vide : aucun filtre. Un domaine couvre aussi ses sous-domaines. */
-  allowedDomains: z.array(z.string().regex(DOMAIN)).max(MAX_ALLOWED_DOMAINS)
+  allowedDomains: z.array(z.string().regex(DOMAIN)).max(MAX_ALLOWED_DOMAINS),
+  /** Identifiants des connecteurs MCP configurés dans les réglages. */
+  connectors: z.array(z.uuid()).max(20).default([])
 })
 
 export type AgentTools = z.infer<typeof AgentToolsSchema>
 
-export const NO_TOOLS: AgentTools = { webSearch: false, webFetch: false, allowedDomains: [] }
+export const NO_TOOLS: AgentTools = { webSearch: false, webFetch: false, allowedDomains: [], connectors: [] }
 
 export function isValidDomain(domain: string): boolean {
   return DOMAIN.test(domain)
@@ -47,7 +50,10 @@ export function parseDomains(text: string): string[] {
   return [...new Set(domains)]
 }
 
-export type ToolActivity = { kind: 'search'; query: string } | { kind: 'fetch'; host: string }
+export type ToolActivity =
+  | { kind: 'search'; query: string }
+  | { kind: 'fetch'; host: string }
+  | { kind: 'connector'; connector: string; tool: string }
 
 function hostOf(url: string): string | null {
   try {
@@ -58,7 +64,12 @@ function hostOf(url: string): string | null {
 }
 
 /** Ce que fait l'agent, d'après son appel d'outil. Les noms diffèrent entre l'API et Claude Code. */
-export function describeToolUse(name: string, input: unknown): ToolActivity | null {
+export function describeToolUse(name: string, input: unknown, connectorLabels: Record<string, string> = {}): ToolActivity | null {
+  const connectorTool = parseConnectorTool(name)
+  if (connectorTool) {
+    const connector = connectorLabels[connectorTool.key]
+    return connector ? { kind: 'connector', connector, tool: connectorTool.tool } : null
+  }
   const fields = (input ?? {}) as Record<string, unknown>
   if ((name === 'web_search' || name === 'WebSearch') && typeof fields['query'] === 'string') {
     return { kind: 'search', query: fields['query'] }
@@ -75,6 +86,7 @@ const MAX_QUERY_LENGTH = 60
 /** Ligne affichée dans le chat pendant que l'agent utilise un outil. */
 export function activityLabel(agentName: string, activity: ToolActivity): string {
   if (activity.kind === 'fetch') return `${agentName} consulte ${activity.host}…`
+  if (activity.kind === 'connector') return `${agentName} utilise ${activity.connector} (${activity.tool})…`
   const { query } = activity
   const short = query.length > MAX_QUERY_LENGTH ? `${query.slice(0, MAX_QUERY_LENGTH).trimEnd()}…` : query
   return `${agentName} cherche « ${short} »…`

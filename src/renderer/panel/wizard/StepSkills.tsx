@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { EFFORTS, MODELS, type AgentDraft } from '../../../shared/agent'
+import type { Connector } from '../../../shared/connectors'
 import { composePrompt } from '../../../shared/systemPrompt'
 import { parseDomains, usesWebTools } from '../../../shared/tools'
 import { Field, Options, type StepProps } from './fields'
@@ -15,6 +16,11 @@ export function StepSkills({ draft, update }: StepProps): React.JSX.Element {
   const composed = composePrompt(draft)
   const { tools } = draft
   const [domainsText, setDomainsText] = useState(tools.allowedDomains.join('\n'))
+  const [connectors, setConnectors] = useState<Connector[]>([])
+
+  useEffect(() => {
+    void window.toolbox.connectors.list().then(setConnectors)
+  }, [])
 
   return (
     <>
@@ -96,6 +102,33 @@ export function StepSkills({ draft, update }: StepProps): React.JSX.Element {
             <p className="field-hint">
               Avec ton abonnement, c'est compris dans ton forfait. Avec une clé API, chaque recherche coûte 10 $ les 1 000, plus les jetons des pages lues.
             </p>
+          </>
+        )}
+        <span className="field-label tools-group">Connecteurs MCP</span>
+        {connectors.length === 0 ? (
+          <p className="field-hint">Aucun connecteur : ajoutes-en un dans les réglages (⚙), puis reviens ici.</p>
+        ) : (
+          <>
+            {connectors.map((connector) => (
+              <label key={connector.id} className="tool-option">
+                <input
+                  type="checkbox"
+                  checked={tools.connectors.includes(connector.id)}
+                  onChange={(event) =>
+                    update({
+                      tools: {
+                        ...tools,
+                        connectors: event.target.checked
+                          ? [...tools.connectors, connector.id]
+                          : tools.connectors.filter((id) => id !== connector.id)
+                      }
+                    })
+                  }
+                />
+                {connector.name}
+              </label>
+            ))}
+            <p className="field-hint">Les lectures passent directement. Toute autre action demande ton clic dans le chat.</p>
           </>
         )}
       </fieldset>

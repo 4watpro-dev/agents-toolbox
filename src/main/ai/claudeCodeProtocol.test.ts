@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  connectorProblem,
   chatArgs,
   classifyResult,
   cleanEnv,
@@ -108,7 +109,8 @@ describe('parseStreamLine', () => {
     expect(parseStreamLine('{"type":"system","subtype":"init","session_id":"s1","apiKeySource":"none"}')).toEqual({
       type: 'init',
       sessionId: 's1',
-      apiKeySource: 'none'
+      apiKeySource: 'none',
+      servers: []
     })
   })
 
@@ -140,7 +142,21 @@ describe('parseStreamLine', () => {
 })
 
 describe('outils web en mode abonnement', () => {
-  const web = { tools: 'WebSearch,WebFetch', settings: '{"hooks":{}}' }
+  const web = { tools: 'WebSearch,WebFetch', settings: '{"hooks":{}}', mcpConfig: null }
+
+  it('transmet la configuration des connecteurs, sans jeton', () => {
+    const args = chatArgs('prompt', 'claude-haiku-5-5', 'low', null, { tools: '', settings: '{}', mcpConfig: '{"mcpServers":{}}' })
+    expect(args[args.indexOf('--mcp-config') + 1]).toBe('{"mcpServers":{}}')
+    expect(args).toContain('--strict-mcp-config')
+    expect(args[args.indexOf('--tools') + 1]).toBe('')
+  })
+
+  it('signale un connecteur injoignable ou qui demande une connexion', () => {
+    expect(connectorProblem('Brevo', 'failed')).toContain('injoignable')
+    expect(connectorProblem('Brevo', 'needs-auth')).toContain('jeton')
+    expect(connectorProblem('Brevo', 'connected')).toBeNull()
+    expect(connectorProblem('Brevo', 'pending')).toBeNull()
+  })
 
   it('sans outil, Claude Code ne reçoit ni outil ni réglage', () => {
     const args = chatArgs('prompt', 'claude-haiku-5-5', 'low', null)

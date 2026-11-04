@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { Provider } from '../../shared/ipc'
 import { ApiKeySettings } from './ApiKeySettings'
+import { ConnectorSettings } from './ConnectorSettings'
 import { PreferenceSettings } from './PreferenceSettings'
 import { SubscriptionSettings } from './SubscriptionSettings'
 import { TransferSettings } from './TransferSettings'
@@ -55,6 +56,7 @@ export function SettingsView({ panelOpen, onBack, onAgentsChanged }: SettingsVie
         </fieldset>
         {provider === 'subscription' && <SubscriptionSettings panelOpen={panelOpen} />}
         {provider === 'api' && <ApiKeySettings />}
+        <ConnectorSettings />
         <PreferenceSettings panelOpen={panelOpen} />
         <TransferSettings onImported={onAgentsChanged} />
       </div>

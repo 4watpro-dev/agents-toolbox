@@ -1,6 +1,7 @@
 import { app, globalShortcut } from 'electron'
 import { registerAgentIpc } from './agentIpc'
 import { stopAllClaudeCode } from './ai/claudeCode'
+import { closeToolBridge } from './ai/toolBridge'
 import { registerAiIpc } from './aiIpc'
 import { registerSettingsIpc } from './settingsIpc'
 import { registerTransferIpc } from './transferIpc'
@@ -16,6 +17,7 @@ if (!app.requestSingleInstanceLock()) {
   app.on('window-all-closed', () => undefined)
   app.on('will-quit', () => {
     stopAllClaudeCode()
+    closeToolBridge()
     globalShortcut.unregisterAll()
   })
   void app.whenReady().then(() => {

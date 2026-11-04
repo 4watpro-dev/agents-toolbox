@@ -64,7 +64,13 @@ const api: ToolboxApi = {
     send: (sessionId, agent, text, agentId) => ipcRenderer.send(IPC.chatSend, sessionId, agent, text, agentId),
     stop: (sessionId) => ipcRenderer.send(IPC.chatStop, sessionId),
     reset: (sessionId) => ipcRenderer.send(IPC.chatReset, sessionId),
-    onEvent: (listener) => subscribe<ChatEvent>(IPC.chatEvent, listener)
+    onEvent: (listener) => subscribe<ChatEvent>(IPC.chatEvent, listener),
+    confirm: (id, approved) => ipcRenderer.send(IPC.chatConfirm, id, approved)
+  },
+  connectors: {
+    list: () => ipcRenderer.invoke(IPC.connectorsList),
+    save: (id, input) => ipcRenderer.invoke(IPC.connectorsSave, id, input),
+    remove: (id) => ipcRenderer.invoke(IPC.connectorsRemove, id)
   },
   generateAgent: (description) => ipcRenderer.invoke(IPC.generateAgent, description),
   copyText: (text) => ipcRenderer.send(IPC.copyText, text)

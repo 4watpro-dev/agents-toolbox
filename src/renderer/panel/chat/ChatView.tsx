@@ -3,6 +3,7 @@ import type { AgentDraft } from '../../../shared/agent'
 import type { AvatarState } from '../../../shared/avatar'
 import { activityLabel } from '../../../shared/tools'
 import { Avatar } from '../../avatar/Avatar'
+import { ActionCard } from './ActionCard'
 import { MessageBubble } from './MessageBubble'
 import {
   loadChatSession,
@@ -68,7 +69,7 @@ export function ChatView({
   useEffect(() => {
     const element = scroller.current
     if (element && stuckToBottom.current) element.scrollTop = element.scrollHeight
-  }, [chat.messages, chat.activity, chat.failure, chat.notice, chat.remembered])
+  }, [chat.messages, chat.activity, chat.actions, chat.failure, chat.notice, chat.remembered])
 
   function send(): void {
     const text = input.trim()
@@ -134,9 +135,16 @@ export function ChatView({
         {chat.messages.map((message) => (
           <MessageBubble key={message.id} role={message.role} text={message.text} />
         ))}
-        {chat.busy && chat.activity && <p className="chat-waiting">{activityLabel(agent.name, chat.activity)}</p>}
-        {chat.busy && !chat.activity && chat.messages.at(-1)?.role === 'user' && (
-          <p className="chat-waiting">{agent.name} réfléchit…</p>
+        {chat.actions.map((action) => (
+          <ActionCard key={action.id} action={action} agentName={agent.name} onAnswer={(approved) => window.toolbox.chat.confirm(action.id, approved)} />
+        ))}
+        {chat.busy && chat.actions.some((action) => !action.outcome) ? null : (
+          <>
+            {chat.busy && chat.activity && <p className="chat-waiting">{activityLabel(agent.name, chat.activity)}</p>}
+            {chat.busy && !chat.activity && chat.messages.at(-1)?.role === 'user' && (
+              <p className="chat-waiting">{agent.name} réfléchit…</p>
+            )}
+          </>
         )}
         {agentId &&
           chat.remembered.map((fact) => (

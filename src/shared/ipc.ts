@@ -4,6 +4,7 @@
 import type { Agent, AgentDraft } from './agent'
 import type { AvatarConfig } from './avatar'
 import type { ChatEvent } from './chat'
+import type { Connector, ConnectorInput } from './connectors'
 import type { Conversation, ConversationSummary } from './conversation'
 
 export const CORNERS = ['top-left', 'top-right', 'bottom-left', 'bottom-right'] as const
@@ -44,6 +45,10 @@ export const IPC = {
   chatStop: 'chat:stop',
   chatReset: 'chat:reset',
   chatEvent: 'chat:event',
+  chatConfirm: 'chat:confirm',
+  connectorsList: 'connectors:list',
+  connectorsSave: 'connectors:save',
+  connectorsRemove: 'connectors:remove',
   providerGet: 'provider:get',
   providerSet: 'provider:set',
   subscriptionStatus: 'subscription:status',
@@ -146,6 +151,16 @@ export interface ChatApi {
   stop(sessionId: string): void
   reset(sessionId: string): void
   onEvent(listener: (event: ChatEvent) => void): () => void
+  /** Réponse à une carte de confirmation. */
+  confirm(id: string, approved: boolean): void
+}
+
+/** Les jetons vont du renderer vers le main, jamais en sens inverse. */
+export interface ConnectorsApi {
+  list(): Promise<Connector[]>
+  /** `id` nul : ajoute un connecteur. */
+  save(id: string | null, input: ConnectorInput): Promise<Result<Connector>>
+  remove(id: string): Promise<void>
 }
 
 export interface ConnectionApi {
@@ -165,6 +180,7 @@ export interface ToolboxApi {
   memory: MemoryApi
   preferences: PreferencesApi
   chat: ChatApi
+  connectors: ConnectorsApi
   generateAgent(description: string): Promise<Result<AgentDraft>>
   copyText(text: string): void
 }

@@ -1,3 +1,4 @@
+import type { Confirmation, ConfirmationOutcome } from './connectors'
 import type { Mood } from './replyParser'
 import type { ToolActivity } from './tools'
 
@@ -26,6 +27,9 @@ export interface ChatFailure {
 export type ChatEvent = { sessionId: string } & (
   | { type: 'delta'; text: string }
   | { type: 'tool'; activity: ToolActivity }
+  | { type: 'confirm'; confirmation: Confirmation }
+  | { type: 'confirmed'; id: string; outcome: ConfirmationOutcome }
+  | { type: 'notice'; text: string }
   | { type: 'done'; mood: Mood; truncated: boolean; facts: string[] }
   | { type: 'stopped' }
   | { type: 'error'; failure: ChatFailure }

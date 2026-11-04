@@ -29,7 +29,7 @@ describe('stepError', () => {
 describe('outils', () => {
   const withDomains = (allowedDomains: string[], webSearch = true): AgentDraft => ({
     ...complete,
-    tools: { webSearch, webFetch: false, allowedDomains }
+    tools: { webSearch, webFetch: false, allowedDomains, connectors: [] }
   })
 
   it('accepte une liste valide ou vide', () => {
@@ -50,7 +50,18 @@ describe('outils', () => {
 
   it('donne aucun outil aux fiches enregistrées avant leur arrivée', () => {
     const { tools: _tools, ...older } = finalizeDraft(complete)
-    expect(AgentDraftSchema.parse(older).tools).toEqual({ webSearch: false, webFetch: false, allowedDomains: [] })
+    expect(AgentDraftSchema.parse(older).tools).toEqual({ webSearch: false, webFetch: false, allowedDomains: [], connectors: [] })
+  })
+
+  it('complète les fiches qui ont les outils web mais pas encore les connecteurs', () => {
+    const tools = { webSearch: true, webFetch: false, allowedDomains: ['brevo.com'] }
+    expect(AgentDraftSchema.parse({ ...finalizeDraft(complete), tools }).tools.connectors).toEqual([])
+  })
+
+  it('garde les connecteurs quand les outils web sont coupés', () => {
+    const connectors = ['4f6a2c1e-8b1d-4e3a-9c7f-2a5b6c7d8e9f']
+    const draft: AgentDraft = { ...complete, tools: { webSearch: false, webFetch: false, allowedDomains: ['x.com'], connectors } }
+    expect(finalizeDraft(draft).tools).toEqual({ webSearch: false, webFetch: false, allowedDomains: [], connectors })
   })
 })
 

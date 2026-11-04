@@ -33,7 +33,7 @@ export function finalizeDraft(draft: AgentDraft): AgentDraft {
   return {
     ...draft,
     // Sans outil actif, la liste de domaines est masquée : elle ne doit pas bloquer l'enregistrement.
-    tools: usesWebTools(draft.tools) ? draft.tools : NO_TOOLS,
+    tools: usesWebTools(draft.tools) ? draft.tools : { ...NO_TOOLS, connectors: draft.tools.connectors },
     personality: {
       ...draft.personality,
       catchphrases: draft.personality.catchphrases.map((phrase) => phrase.trim()).filter(Boolean)

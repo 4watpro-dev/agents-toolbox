@@ -65,10 +65,25 @@ Dans l'assistant, à l'étape **Compétences**, tu peux activer pour chaque agen
 |---|---|---|
 | Outils | `WebSearch` et `WebFetch` de Claude Code | Outils serveur `web_search` et `web_fetch` de l'API |
 | Coût | Compris dans ton forfait, dans ses limites | 10 $ les 1 000 recherches, plus les jetons des pages lues |
-| Filtre de domaines | Appliqué avant chaque appel par `web-guard.cjs`, un contrôle de l'app | `allowed_domains` de l'API |
+| Filtre de domaines | Appliqué avant chaque appel par `tool-guard.cjs`, un contrôle de l'app | `allowed_domains` de l'API |
 | Limite par tour | Aucune | 5 recherches et 5 lectures, 20 000 jetons par page |
 
 Une page web peut contenir des instructions malveillantes. Sans liste de domaines, un agent qui en lit une pourrait être poussé à envoyer ce qu'il sait vers un autre site, surtout en mode abonnement, où `WebFetch` n'a pas la protection de l'API qui limite les adresses à celles déjà vues dans la conversation. Pour un agent qui connaît des informations sensibles, renseigne la liste. Une fiche exportée contient ses outils : vérifie-les quand tu importes un agent.
+
+### Connecteurs MCP
+
+Dans **⚙**, ajoute un serveur MCP distant avec son adresse et, si besoin, un jeton envoyé en `Authorization: Bearer`. Active-le ensuite agent par agent, à l'étape **Compétences**. Par exemple, pour Brevo : `https://mcp.brevo.com/v1/brevo/mcp`, avec un jeton créé dans son tableau de bord.
+
+- **Lectures :** elles passent sans confirmation. L'app les reconnaît au nom de l'action, qui doit dire clairement que c'est une lecture (`get`, `list`, `search`, `stats`…) et ne contenir aucun mot d'écriture.
+- **Tout le reste :** création, modification, suppression, envoi, import, ou nom inconnu. L'action affiche une carte avec son détail complet, et ne s'exécute qu'après un clic sur **Confirmer**.
+- **Sans réponse :** refus, arrêt de la réponse, fin de l'échange ou 5 minutes sans clic, et l'action n'est pas exécutée. Si le contrôle tombe en panne, l'appel est bloqué aussi.
+
+Limites :
+
+- La distinction repose sur les noms : n'ajoute que des serveurs de confiance. Un serveur qui appellerait `get_x` une action d'écriture passerait sans carte.
+- La carte attend dans le chat : rien ne t'alerte si le panneau est fermé.
+- Les connecteurs fonctionnent seulement avec ton abonnement. L'API exécuterait leurs actions de son côté, sans étape de confirmation : ils y sont désactivés.
+- La connexion OAuth n'est pas gérée : seuls les serveurs sans authentification ou à jeton fonctionnent.
 
 ## Où sont tes données
 
@@ -81,7 +96,9 @@ Tout est dans `~/Library/Application Support/Agent Toolbox/`, en JSON non chiffr
 | `memory/<agent>.json` | Faits retenus |
 | `settings.json` | Position de l'icône, raccourci, mode de connexion |
 | `secrets.bin` | Clé API chiffrée, si tu en as enregistré une |
-| `tools/web-guard.cjs` | Contrôle des outils web, réécrit à chaque usage |
+| `connectors.json` | Nom et adresse des connecteurs MCP |
+| `connector-tokens.bin` | Jetons des connecteurs, chiffrés |
+| `tools/tool-guard.cjs` | Contrôle des outils, réécrit à chaque usage |
 
 Deux emplacements en dehors de ce dossier :
 

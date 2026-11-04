@@ -34,6 +34,22 @@ describe('chatState', () => {
     expect(applyChatEvent(searching, { sessionId, type: 'error', failure: { code: 'unknown', message: 'x' } }).activity).toBeNull()
   })
 
+  it('suit une carte de confirmation et la ferme à la fin du tour', () => {
+    const confirmation = { id: 'c1', connector: 'Brevo', tool: 'send_campaign', input: { name: 'Noël' } }
+    const asking = applyChatEvent(send(EMPTY_CHAT, 'Envoie'), { sessionId, type: 'confirm', confirmation })
+    expect(asking.actions).toEqual([{ ...confirmation, outcome: null }])
+    expect(applyChatEvent(asking, { sessionId, type: 'confirmed', id: 'c1', outcome: 'approved' }).actions[0].outcome).toBe('approved')
+    expect(applyChatEvent(asking, { sessionId, type: 'stopped' }).actions[0].outcome).toBe('cancelled')
+    expect(applyChatEvent(asking, { sessionId, type: 'error', failure: { code: 'unknown', message: 'x' } }).actions[0].outcome).toBe('cancelled')
+    expect(send(asking, 'Autre').actions).toEqual([])
+  })
+
+  it("garde l'avertissement d'un connecteur jusqu'à la fin du tour", () => {
+    const warned = applyChatEvent(send(EMPTY_CHAT, 'Salut'), { sessionId, type: 'notice', text: 'Injoignable' })
+    expect(applyChatEvent(warned, { sessionId, type: 'done', mood: 'neutral', truncated: false, facts: [] }).notice).toBe('Injoignable')
+    expect(send(warned, 'Encore').notice).toBeNull()
+  })
+
   it('donne des identifiants uniques', () => {
     const state = delta(send(EMPTY_CHAT, 'Salut'), 'Bonjour')
     expect(new Set(state.messages.map((m) => m.id)).size).toBe(2)

@@ -268,6 +268,98 @@ textarea.input {
   font-size: 13px;
 }
 
+.tools-group {
+  margin-top: 8px;
+}
+
+/* Connecteurs dans les réglages */
+.connector-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 8px 0;
+  padding: 0;
+  list-style: none;
+}
+
+.connector-list li {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.connector-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.connector-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.connector-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Carte de confirmation dans le chat */
+.action-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-2);
+}
+
+.action-card h2 {
+  margin: 0;
+  font-size: 13px;
+}
+
+.action-target {
+  margin: 0;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.action-details {
+  max-height: 180px;
+  margin: 0;
+  overflow-y: auto;
+  font-size: 12px;
+}
+
+.action-details div {
+  padding: 3px 0;
+}
+
+.action-details dt {
+  color: var(--muted);
+}
+
+.action-details dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.action-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
 /* Pastilles */
 .chips {
   display: flex;
