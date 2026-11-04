@@ -1,7 +1,7 @@
 import { join } from 'node:path'
 import { app } from 'electron'
 import { z } from 'zod'
-import { CORNERS } from '../../shared/ipc'
+import { CORNERS, PROVIDERS } from '../../shared/ipc'
 import { readJson, writeJson } from './jsonFile'
 
 const SettingsSchema = z.object({
@@ -9,14 +9,17 @@ const SettingsSchema = z.object({
     displayId: z.number().nullable(),
     corner: z.enum(CORNERS)
   }),
-  lastAgentId: z.string().nullable().default(null)
+  lastAgentId: z.string().nullable().default(null),
+  // L'abonnement par défaut : l'API, facturée à l'usage, reste un choix explicite.
+  provider: z.enum(PROVIDERS).default('subscription')
 })
 
 export type Settings = z.infer<typeof SettingsSchema>
 
 const DEFAULTS: Settings = {
   widget: { displayId: null, corner: 'bottom-right' },
-  lastAgentId: null
+  lastAgentId: null,
+  provider: 'subscription'
 }
 
 const settingsPath = (): string => join(app.getPath('userData'), 'settings.json')

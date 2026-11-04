@@ -7,6 +7,7 @@ interface GalleryProps {
   agents: Agent[]
   panelOpen: boolean
   onOpen(agent: Agent): void
+  onOpenSettings(): void
   onCreate(): void
   onEdit(agent: Agent): void
   onRemove(agent: Agent): void
@@ -17,6 +18,7 @@ export function Gallery({
   agents,
   panelOpen,
   onOpen,
+  onOpenSettings,
   onCreate,
   onEdit,
   onRemove,
@@ -40,15 +42,20 @@ export function Gallery({
   return (
     <div className="view">
       <header className="gallery-header">
-        <input
-          ref={search}
-          className="input"
-          type="search"
-          placeholder="Rechercher un agent"
-          aria-label="Rechercher un agent"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-        />
+        <div className="gallery-search">
+          <input
+            ref={search}
+            className="input"
+            type="search"
+            placeholder="Rechercher un agent"
+            aria-label="Rechercher un agent"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+          />
+          <button type="button" className="button-icon" aria-label="Réglages" title="Réglages" onClick={onOpenSettings}>
+            ⚙
+          </button>
+        </div>
         <div className="chips" role="group" aria-label="Filtrer par catégorie">
           <button type="button" className="chip" aria-pressed={category === null} onClick={() => setCategory(null)}>
             Tous

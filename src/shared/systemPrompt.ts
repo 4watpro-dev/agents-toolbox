@@ -104,6 +104,13 @@ export function buildSystemPrompt(agent: AgentDraft, facts: string[] = []): stri
       )
     )
   }
+  if (agent.greeting) {
+    parts.push(
+      section('Ton accueil', [
+        `La conversation s'ouvre sur ce message de ta part : « ${agent.greeting} ». Ne te présente pas une seconde fois.`
+      ])
+    )
+  }
   parts.push(MOOD_INSTRUCTIONS)
   return parts.join('\n\n')
 }

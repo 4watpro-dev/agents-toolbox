@@ -58,6 +58,11 @@ describe('buildSystemPrompt', () => {
     expect(prompt).toContain('[mood:sorry]')
   })
 
+  it("signale le message d'accueil, déjà affiché à la personne", () => {
+    expect(buildSystemPrompt(draft({ greeting: 'Salut !' }))).toContain('« Salut ! »')
+    expect(buildSystemPrompt(draft())).not.toContain('Ton accueil')
+  })
+
   it('ajoute les faits retenus', () => {
     const prompt = buildSystemPrompt(draft(), ['Travaille à Brest'])
     expect(prompt).toContain('- Travaille à Brest')

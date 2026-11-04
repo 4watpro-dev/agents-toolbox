@@ -7,7 +7,6 @@ export function StepIdentity({ draft, update }: StepProps): React.JSX.Element {
       <Field label="Nom">
         <input
           className="input"
-          autoFocus
           maxLength={40}
           value={draft.name}
           onChange={(event) => update({ name: event.target.value })}

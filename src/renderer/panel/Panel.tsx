@@ -2,8 +2,9 @@ import { motion } from 'motion/react'
 import { useEffect, useState } from 'react'
 import type { Agent } from '../../shared/agent'
 import type { Corner, PanelState } from '../../shared/ipc'
-import { AgentHome } from './AgentHome'
+import { ChatView } from './chat/ChatView'
 import { Gallery } from './Gallery'
+import { SettingsView } from './SettingsView'
 import { useAgents } from './useAgents'
 import { AgentWizard } from './wizard/AgentWizard'
 
@@ -18,11 +19,13 @@ type View =
   | { name: 'gallery' }
   | { name: 'wizard'; agent: Agent | null }
   | { name: 'agent'; agentId: string }
+  | { name: 'settings'; returnTo: View }
 
 export function Panel(): React.JSX.Element {
   const [state, setState] = useState<PanelState>({ open: false, corner: 'bottom-right', requestedAt: 0 })
   const [view, setView] = useState<View>({ name: 'gallery' })
   const { agents, error, save, remove, setFavorite } = useAgents()
+  const openSettings = (): void => setView((returnTo) => ({ name: 'settings', returnTo }))
 
   useEffect(() => window.toolbox.panel.onState(setState), [])
 
@@ -66,26 +69,35 @@ export function Panel(): React.JSX.Element {
           {error}
         </p>
       )}
-      {view.name === 'wizard' ? (
+      {view.name === 'settings' ? (
+        <SettingsView panelOpen={state.open} onBack={() => setView(view.returnTo)} />
+      ) : view.name === 'wizard' ? (
         <AgentWizard
           agent={view.agent}
+          panelOpen={state.open}
           onCancel={() => setView({ name: 'gallery' })}
+          onOpenSettings={openSettings}
           onSave={async (draft) => {
             await save(view.agent?.id ?? null, draft)
             setView({ name: 'gallery' })
           }}
         />
       ) : current ? (
-        <AgentHome
+        <ChatView
+          sessionId={current.id}
           agent={current}
+          panelOpen={state.open}
+          backLabel="Retour à la galerie"
           onBack={() => setView({ name: 'gallery' })}
           onEdit={() => setView({ name: 'wizard', agent: current })}
+          onOpenSettings={openSettings}
         />
       ) : (
         <Gallery
           agents={agents}
           panelOpen={state.open}
           onOpen={openAgent}
+          onOpenSettings={openSettings}
           onCreate={() => setView({ name: 'wizard', agent: null })}
           onEdit={(agent) => setView({ name: 'wizard', agent })}
           onRemove={remove}

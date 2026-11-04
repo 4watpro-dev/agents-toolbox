@@ -1,5 +1,5 @@
 import { join } from 'node:path'
-import { BrowserWindow, ipcMain, screen, type Display } from 'electron'
+import { BrowserWindow, ipcMain, screen, shell, type Display } from 'electron'
 import { z } from 'zod'
 import { IPC, type Corner, type PanelState } from '../shared/ipc'
 import { cornerPosition, nearestCorner, panelPosition } from './snap'
@@ -43,6 +43,24 @@ function loadPage(window: BrowserWindow, page: 'widget' | 'panel' | 'demo'): voi
   } else {
     void window.loadFile(join(__dirname, `../renderer/${page}.html`))
   }
+}
+
+function openInBrowser(url: string): void {
+  const { protocol } = new URL(url)
+  if (protocol === 'https:' || protocol === 'http:') void shell.openExternal(url)
+}
+
+/** Un lien dans une réponse s'ouvre dans le navigateur : l'app ne quitte jamais ses pages. */
+function keepNavigationInApp(window: BrowserWindow): void {
+  const { webContents } = window
+  webContents.setWindowOpenHandler(({ url }) => {
+    openInBrowser(url)
+    return { action: 'deny' }
+  })
+  webContents.on('will-navigate', (event, url) => {
+    event.preventDefault()
+    openInBrowser(url)
+  })
 }
 
 function floatAboveEverything(window: BrowserWindow): void {
@@ -200,6 +218,7 @@ function createPanel(): BrowserWindow {
     webPreferences: securePreferences
   })
   floatAboveEverything(window)
+  keepNavigationInApp(window)
   window.on('blur', () => {
     if (!panelOpen) return
     lastBlurCloseAt = Date.now()
