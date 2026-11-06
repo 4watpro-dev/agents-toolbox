@@ -13,6 +13,7 @@ interface Press {
 export function Widget(): React.JSX.Element {
   const press = useRef<Press | null>(null)
   const [dragging, setDragging] = useState(false)
+  const [hovered, setHovered] = useState(false)
   const [avatar, setAvatar] = useState<AvatarConfig>(DEFAULT_AVATAR)
 
   useEffect(() => {
@@ -54,12 +55,14 @@ export function Widget(): React.JSX.Element {
       type="button"
       className={dragging ? 'widget dragging' : 'widget'}
       aria-label="Ouvrir Agent Toolbox"
+      onPointerEnter={() => setHovered(true)}
+      onPointerLeave={() => setHovered(false)}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerUp}
     >
-      <Avatar config={avatar} size={46} groundShadow={false} floating={false} />
+      <Avatar config={avatar} state={hovered && !dragging ? 'happy' : 'idle'} size={46} groundShadow={false} floating={false} />
     </button>
   )
 }

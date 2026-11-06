@@ -13,6 +13,7 @@ interface AgentSwitcherProps {
 /** Titre de la conversation, qui ouvre la liste des agents pour changer sans quitter le chat. */
 export function AgentSwitcher({ agent, agents, onSwitch }: AgentSwitcherProps): React.JSX.Element {
   const [open, setOpen] = useState(false)
+  const [hoveredId, setHoveredId] = useState<string | null>(null)
   const others = useMemo(
     () => filterAgents(agents, { query: '', category: null }).filter((other) => other.id !== agent.id),
     [agents, agent.id]
@@ -42,7 +43,7 @@ export function AgentSwitcher({ agent, agents, onSwitch }: AgentSwitcherProps): 
           <div className="switcher-backdrop" onClick={() => setOpen(false)} />
           <ul className="switcher-list" role="menu">
             {others.map((other) => (
-              <li key={other.id}>
+              <li key={other.id} onMouseEnter={() => setHoveredId(other.id)} onMouseLeave={() => setHoveredId(null)}>
                 <button
                   type="button"
                   role="menuitem"
@@ -51,7 +52,13 @@ export function AgentSwitcher({ agent, agents, onSwitch }: AgentSwitcherProps): 
                     onSwitch(other)
                   }}
                 >
-                  <Avatar config={other.avatar} size={30} groundShadow={false} floating={false} />
+                  <Avatar
+                    config={other.avatar}
+                    state={hoveredId === other.id ? 'happy' : 'idle'}
+                    size={30}
+                    groundShadow={false}
+                    floating={false}
+                  />
                   <span>
                     <span className="switcher-name">{other.name}</span>
                     <span className="switcher-specialty">{other.specialty}</span>

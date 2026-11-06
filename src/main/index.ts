@@ -1,4 +1,4 @@
-import { app, globalShortcut } from 'electron'
+import { app, globalShortcut, nativeTheme } from 'electron'
 import { registerAgentIpc } from './agentIpc'
 import { stopAllClaudeCode } from './ai/claudeCode'
 import { closeToolBridge } from './ai/toolBridge'
@@ -22,6 +22,8 @@ if (!app.requestSingleInstanceLock()) {
   })
   void app.whenReady().then(() => {
     app.dock?.hide()
+    // L'interface est toujours sombre : le verre natif doit l'être aussi, même si le Mac est en clair.
+    nativeTheme.themeSource = 'dark'
     registerAgentIpc()
     registerAiIpc()
     registerSettingsIpc()

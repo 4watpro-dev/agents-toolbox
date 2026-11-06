@@ -6,11 +6,11 @@ const generated: GeneratedAgent = {
   specialty: 'coach vocal',
   category: 'Perso',
   description: 'Aide à parler en public.',
-  headColor: '#ffe0e6',
-  antennaColor: '#8e5cf6',
+  bodyColor: '#8e5cf6',
+  glowColor: '#ffe0e6',
   eyeStyle: 'round',
   accessory: 'bowtie',
-  headShape: 'round',
+  shape: 'round',
   formality: 72,
   detail: 40,
   humor: 60,
@@ -40,9 +40,9 @@ describe('normalizeGenerated', () => {
   })
 
   it('remplace une couleur mal formée', () => {
-    const { avatar } = normalizeGenerated({ ...generated, headColor: 'rose', antennaColor: '#12' })
-    expect(avatar.headColor).toBe('#ffffff')
-    expect(avatar.antennaColor).toBe('#3b8cff')
+    const { avatar } = normalizeGenerated({ ...generated, bodyColor: 'rose', glowColor: '#12' })
+    expect(avatar.bodyColor).toBe('#5be370')
+    expect(avatar.glowColor).toBe('#ffffff')
   })
 
   it('limite les expressions et retire les vides', () => {

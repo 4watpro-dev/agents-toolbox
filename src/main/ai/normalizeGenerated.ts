@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { AgentDraftSchema, CATEGORIES, EMPTY_DRAFT, MAX_CATCHPHRASES, type AgentDraft } from '../../shared/agent'
-import { ACCESSORIES, DEFAULT_AVATAR, EYE_STYLES, HEAD_SHAPES } from '../../shared/avatar'
+import { ACCESSORIES, DEFAULT_AVATAR, EYE_STYLES, GHOST_SHAPES } from '../../shared/avatar'
 
 /**
  * Forme demandée au modèle. Les sorties structurées n'imposent ni longueur ni
@@ -11,11 +11,11 @@ export const GeneratedAgentSchema = z.object({
   specialty: z.string().describe('Spécialité en quelques mots, sans majuscule initiale'),
   category: z.enum(CATEGORIES),
   description: z.string().describe('Une phrase'),
-  headColor: z.string().describe('Couleur douce au format #rrggbb'),
-  antennaColor: z.string().describe('Couleur vive au format #rrggbb'),
+  bodyColor: z.string().describe('Couleur vive du corps, au format #rrggbb'),
+  glowColor: z.string().describe('Couleur très claire de la lueur, au format #rrggbb'),
   eyeStyle: z.enum(EYE_STYLES),
   accessory: z.enum(ACCESSORIES),
-  headShape: z.enum(HEAD_SHAPES),
+  shape: z.enum(GHOST_SHAPES),
   formality: z.number().describe('0 = formel, 100 = décontracté'),
   detail: z.number().describe('0 = concis, 100 = détaillé'),
   humor: z.number().describe('0 = sérieux, 100 = humoristique'),
@@ -56,11 +56,11 @@ export function normalizeGenerated(generated: GeneratedAgent): AgentDraft {
     category: generated.category,
     description: generated.description.trim().slice(0, 300),
     avatar: {
-      headColor: color(generated.headColor, DEFAULT_AVATAR.headColor),
-      antennaColor: color(generated.antennaColor, DEFAULT_AVATAR.antennaColor),
+      bodyColor: color(generated.bodyColor, DEFAULT_AVATAR.bodyColor),
+      glowColor: color(generated.glowColor, DEFAULT_AVATAR.glowColor),
       eyeStyle: generated.eyeStyle,
       accessory: generated.accessory,
-      headShape: generated.headShape
+      shape: generated.shape
     },
     personality: {
       sliders: {

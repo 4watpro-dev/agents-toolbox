@@ -1,4 +1,4 @@
-import type { Accessory, EyeStyle, HeadShape } from '../../shared/avatar'
+import type { Accessory, EyeStyle, GhostShape } from '../../shared/avatar'
 
 export const EYE_LABELS: Record<EyeStyle, string> = {
   oval: 'Ovales',
@@ -7,10 +7,10 @@ export const EYE_LABELS: Record<EyeStyle, string> = {
   pixel: 'Carrés'
 }
 
-export const HEAD_LABELS: Record<HeadShape, string> = {
-  capsule: 'Capsule',
-  round: 'Ronde',
-  square: 'Carrée'
+export const SHAPE_LABELS: Record<GhostShape, string> = {
+  drop: 'Goutte',
+  classic: 'Classique',
+  round: 'Bulle'
 }
 
 export const ACCESSORY_LABELS: Record<Accessory, string> = {

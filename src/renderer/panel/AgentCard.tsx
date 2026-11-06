@@ -32,7 +32,7 @@ export function AgentCard({ agent, onOpen, onEdit, onExport, onRemove, onToggleF
     >
       <button type="button" className="card-open" onClick={onOpen}>
         {/* Une grille de flottements continus coûterait cher : seule la carte survolée flotte. */}
-        <Avatar config={agent.avatar} size={72} floating={hovered} />
+        <Avatar config={agent.avatar} state={hovered ? 'happy' : 'idle'} size={72} floating={hovered} />
         <span className="card-name">{agent.name}</span>
         <span className="card-specialty">{agent.specialty}</span>
       </button>

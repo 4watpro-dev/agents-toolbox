@@ -9,11 +9,11 @@ export const SEED_AGENTS: AgentDraft[] = [
     category: 'Travail',
     description: 'Démêle les journées chargées et transforme le flou en prochaines actions.',
     avatar: {
-      headColor: '#ffffff',
-      antennaColor: '#3b8cff',
+      bodyColor: '#5be370',
+      glowColor: '#ffffff',
       eyeStyle: 'oval',
       accessory: 'headphones',
-      headShape: 'capsule'
+      shape: 'drop'
     },
     personality: {
       sliders: { formality: 60, detail: 30, humor: 40, boldness: 55 },
@@ -37,11 +37,11 @@ export const SEED_AGENTS: AgentDraft[] = [
     category: 'Écriture',
     description: 'Traque les fautes et les lourdeurs, sans jamais trahir ton style.',
     avatar: {
-      headColor: '#f4ead7',
-      antennaColor: '#b5533c',
+      bodyColor: '#ff9f57',
+      glowColor: '#ffffff',
       eyeStyle: 'round',
       accessory: 'glasses',
-      headShape: 'square'
+      shape: 'classic'
     },
     personality: {
       sliders: { formality: 15, detail: 65, humor: 35, boldness: 25 },
@@ -65,11 +65,11 @@ export const SEED_AGENTS: AgentDraft[] = [
     category: 'Perso',
     description: "Aide à se remettre au travail quand l'attention s'éparpille.",
     avatar: {
-      headColor: '#dff3e8',
-      antennaColor: '#2e9e6b',
+      bodyColor: '#6fb4ff',
+      glowColor: '#ffffff',
       eyeStyle: 'wide',
       accessory: 'beanie',
-      headShape: 'round'
+      shape: 'round'
     },
     personality: {
       sliders: { formality: 85, detail: 15, humor: 70, boldness: 60 },

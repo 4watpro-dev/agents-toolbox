@@ -7,20 +7,23 @@ import {
   type AvatarConfig,
   type AvatarState,
   type EyeStyle,
-  type HeadShape
+  type GhostShape
 } from '../../shared/avatar'
 import { EXPRESSIONS } from './expressions'
 import { useBlink } from './useBlink'
 import './avatar.css'
 
 const CX = 60
-const CY = 66
-const EYE_OFFSET = 16
+const CY = 58
+const EYE_Y = 42
+const EYE_OFFSET = 11
+const BODY_TOP = 14
 
-const HEADS: Record<HeadShape, { width: number; height: number; radius: number }> = {
-  capsule: { width: 88, height: 66, radius: 33 },
-  round: { width: 76, height: 76, radius: 38 },
-  square: { width: 78, height: 70, radius: 17 }
+const BODIES: Record<GhostShape, string> = {
+  drop: 'M60 14 C85 14 104 33 104 57 C104 78 84 92 63.5 104.5 Q60 106.5 56.5 104.5 C36 92 16 78 16 57 C16 33 35 14 60 14 Z',
+  classic:
+    'M60 14 C85 14 104 33 104 58 L104 92 Q96.7 108 89.3 92 Q82 80 74.7 92 Q67.3 108 60 92 Q52.7 80 45.3 92 Q38 108 30.7 92 Q23.3 80 16 92 L16 58 C16 33 35 14 60 14 Z',
+  round: 'M60 14 C85 14 104 34 104 59 C104 84 85 104 60 104 C35 104 16 84 16 59 C16 34 35 14 60 14 Z'
 }
 
 const SPRING = { type: 'spring', stiffness: 260, damping: 20 } as const
@@ -56,11 +59,12 @@ export function Avatar({
   const paused = useContext(AvatarPausedContext)
   const blinking = useBlink(expression.blinks && !paused)
   const uid = useId()
-  const head = HEADS[config.headShape]
-  const ink = faceColor(config.headColor)
-  const top = CY - head.height / 2
-  const shadingId = `${uid}-shading`
-  const clipId = `${uid}-head`
+  const ink = faceColor(config.bodyColor)
+  const body = BODIES[config.shape]
+  const rimId = `${uid}-rim`
+  const bellyId = `${uid}-belly`
+  const auraId = `${uid}-aura`
+  const clipId = `${uid}-body`
 
   return (
     <MotionConfig reducedMotion="user">
@@ -74,50 +78,54 @@ export function Avatar({
         aria-hidden={label ? undefined : true}
       >
         <defs>
-          {/* Léger modelé qui garde le volume, quelle que soit la couleur de la tête. */}
-          <linearGradient id={shadingId} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stopColor="#ffffff" stopOpacity="0.18" />
-            <stop offset="1" stopColor="#101828" stopOpacity="0.06" />
-          </linearGradient>
+          {/* Bord lumineux : le centre laisse voir la teinte, le pourtour devient blanc. */}
+          <radialGradient id={rimId} cx="0.5" cy="0.56" r="0.62">
+            <stop offset="0.42" stopColor={config.glowColor} stopOpacity="0" />
+            <stop offset="0.72" stopColor={config.glowColor} stopOpacity="0.55" />
+            <stop offset="0.9" stopColor={config.glowColor} stopOpacity="0.95" />
+            <stop offset="1" stopColor={config.glowColor} stopOpacity="1" />
+          </radialGradient>
+          {/* Nuage clair dans le bas du corps. */}
+          <radialGradient id={bellyId}>
+            <stop offset="0" stopColor={config.glowColor} stopOpacity="0.62" />
+            <stop offset="0.55" stopColor={config.glowColor} stopOpacity="0.42" />
+            <stop offset="1" stopColor={config.glowColor} stopOpacity="0" />
+          </radialGradient>
+          <radialGradient id={auraId}>
+            <stop offset="0.55" stopColor={config.glowColor} stopOpacity="0.7" />
+            <stop offset="1" stopColor={config.glowColor} stopOpacity="0" />
+          </radialGradient>
           <clipPath id={clipId}>
-            <rect x={CX - head.width / 2} y={top} width={head.width} height={head.height} rx={head.radius} />
+            <path d={body} />
           </clipPath>
         </defs>
 
-        {groundShadow && <ellipse className="avatar-ground" cx={CX} cy={113} rx={30} ry={4} />}
+        {groundShadow && <ellipse className="avatar-ground" cx={CX} cy={114} rx={24} ry={3.5} />}
 
         <g className={floating ? 'avatar-float' : undefined}>
           <motion.g
-            animate={{ y: expression.head.y, rotate: expression.head.rotate }}
+            animate={{ y: expression.head.y, rotate: expression.head.rotate, opacity: expression.dimmed ? 0.72 : 1 }}
             transition={SPRING}
             style={{ originX: `${CX}px`, originY: `${CY}px`, transformBox: 'view-box' }}
           >
-            <Antenna color={config.antennaColor} top={top} {...expression.antenna} />
+            {expression.aura !== 'off' && (
+              <circle
+                className={expression.aura === 'pulse' ? 'avatar-aura avatar-aura-pulse' : 'avatar-aura'}
+                cx={CX}
+                cy={CY}
+                r={58}
+                fill={`url(#${auraId})`}
+              />
+            )}
 
-            <rect x={CX - head.width / 2 - 6} y={CY - 10} width={9} height={20} rx={4.5} fill="#b9bfc9" />
-            <rect x={CX + head.width / 2 - 3} y={CY - 10} width={9} height={20} rx={4.5} fill="#b9bfc9" />
-
-            <rect
-              x={CX - head.width / 2}
-              y={top}
-              width={head.width}
-              height={head.height}
-              rx={head.radius}
-              fill={config.headColor}
-            />
-            <rect
-              x={CX - head.width / 2}
-              y={top}
-              width={head.width}
-              height={head.height}
-              rx={head.radius}
-              fill={`url(#${shadingId})`}
-            />
+            <path d={body} fill={config.bodyColor} />
+            <ellipse cx={CX} cy={76} rx={28} ry={21} fill={`url(#${bellyId})`} clipPath={`url(#${clipId})`} />
+            <path d={body} fill={`url(#${rimId})`} />
 
             {expression.cheeks && (
               <>
-                <ellipse cx={CX - 28} cy={CY + 11} rx={6} ry={3.5} fill="#ff8fa3" opacity={0.55} />
-                <ellipse cx={CX + 28} cy={CY + 11} rx={6} ry={3.5} fill="#ff8fa3" opacity={0.55} />
+                <ellipse cx={CX - 20} cy={53} rx={5} ry={3} fill="#ff8fa3" opacity={0.6} />
+                <ellipse cx={CX + 20} cy={53} rx={5} ry={3} fill="#ff8fa3" opacity={0.6} />
               </>
             )}
 
@@ -140,13 +148,15 @@ export function Avatar({
               />
             </motion.g>
 
+            <AccessoryLayer accessory={config.accessory} ink={ink} clipId={clipId} />
+
             <AnimatePresence>
               {expression.brows && (
                 <motion.g
                   key="brows"
                   fill="none"
                   stroke={ink}
-                  strokeWidth={3}
+                  strokeWidth={2.4}
                   strokeLinecap="round"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
@@ -165,7 +175,7 @@ export function Avatar({
                   d={expression.mouth}
                   fill="none"
                   stroke={ink}
-                  strokeWidth={2.6}
+                  strokeWidth={2.4}
                   strokeLinecap="round"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
@@ -173,45 +183,10 @@ export function Avatar({
                 />
               )}
             </AnimatePresence>
-
-            <AccessoryLayer accessory={config.accessory} ink={ink} top={top} width={head.width} height={head.height} clipId={clipId} />
           </motion.g>
         </g>
       </svg>
     </MotionConfig>
-  )
-}
-
-interface AntennaProps {
-  color: string
-  top: number
-  rotate: number
-  glow: 'off' | 'on' | 'pulse'
-  dimmed?: boolean
-}
-
-function Antenna({ color, top, rotate, glow, dimmed }: AntennaProps): React.JSX.Element {
-  const ballY = top - 15
-  return (
-    <motion.g
-      animate={{ rotate }}
-      transition={SPRING}
-      style={{ originX: `${CX}px`, originY: `${top}px`, transformBox: 'view-box' }}
-    >
-      <line x1={CX} y1={top + 2} x2={CX} y2={ballY} stroke="#b9bfc9" strokeWidth={3} strokeLinecap="round" />
-      {glow !== 'off' && (
-        <circle className={`avatar-halo avatar-halo-${glow}`} cx={CX} cy={ballY} r={11} fill={color} />
-      )}
-      <circle
-        className={glow === 'pulse' ? 'avatar-ball-pulse' : undefined}
-        cx={CX}
-        cy={ballY}
-        r={6}
-        fill={color}
-        opacity={dimmed ? 0.45 : 1}
-      />
-      <circle cx={CX - 1.8} cy={ballY - 1.8} r={1.5} fill="#ffffff" opacity={0.8} />
-    </motion.g>
   )
 }
 
@@ -228,10 +203,10 @@ function Eye({ x, style, ink, scale, shape, closed }: EyeProps): React.JSX.Eleme
   if (shape === 'arc') {
     return (
       <path
-        d={`M${x - 8} ${CY + 2} Q${x} ${CY - 10} ${x + 8} ${CY + 2}`}
+        d={`M${x - 6} ${EYE_Y + 2} Q${x} ${EYE_Y - 8} ${x + 6} ${EYE_Y + 2}`}
         fill="none"
         stroke={ink}
-        strokeWidth={4}
+        strokeWidth={3}
         strokeLinecap="round"
       />
     )
@@ -241,10 +216,9 @@ function Eye({ x, style, ink, scale, shape, closed }: EyeProps): React.JSX.Eleme
       initial={false}
       animate={{ scaleX: scale, scaleY: closed ? 0.08 : scale }}
       transition={closed ? { duration: 0.05 } : { duration: 0.09 }}
-      style={{ originX: `${x}px`, originY: `${CY}px`, transformBox: 'view-box' }}
+      style={{ originX: `${x}px`, originY: `${EYE_Y}px`, transformBox: 'view-box' }}
     >
       <EyeShape x={x} style={style} ink={ink} />
-      {!closed && <circle cx={x + 2.6} cy={CY - 4} r={2.5} fill={ink === '#20242c' ? '#ffffff' : '#20242c'} />}
     </motion.g>
   )
 }
@@ -252,55 +226,44 @@ function Eye({ x, style, ink, scale, shape, closed }: EyeProps): React.JSX.Eleme
 function EyeShape({ x, style, ink }: { x: number; style: EyeStyle; ink: string }): React.JSX.Element {
   switch (style) {
     case 'oval':
-      return <ellipse cx={x} cy={CY} rx={8} ry={11} fill={ink} />
+      return <ellipse cx={x} cy={EYE_Y} rx={5} ry={7} fill={ink} />
     case 'round':
-      return <circle cx={x} cy={CY} r={9} fill={ink} />
+      return <circle cx={x} cy={EYE_Y} r={6} fill={ink} />
     case 'wide':
-      return <ellipse cx={x} cy={CY} rx={10.5} ry={7.5} fill={ink} />
+      return <ellipse cx={x} cy={EYE_Y} rx={7} ry={5} fill={ink} />
     case 'pixel':
-      return <rect x={x - 7} y={CY - 9} width={14} height={18} rx={3.5} fill={ink} />
+      return <rect x={x - 4.5} y={EYE_Y - 6} width={9} height={12} rx={2.5} fill={ink} />
   }
 }
 
 interface AccessoryLayerProps {
   accessory: Accessory
   ink: string
-  top: number
-  width: number
-  height: number
   clipId: string
 }
 
-function AccessoryLayer({ accessory, ink, top, width, height, clipId }: AccessoryLayerProps): React.JSX.Element | null {
-  const left = CX - width / 2
-  const right = CX + width / 2
+function AccessoryLayer({ accessory, ink, clipId }: AccessoryLayerProps): React.JSX.Element | null {
   switch (accessory) {
     case 'none':
       return null
     case 'glasses':
       return (
-        <g fill="none" stroke={ink} strokeWidth={2.4}>
-          <circle cx={CX - EYE_OFFSET} cy={CY} r={13.5} />
-          <circle cx={CX + EYE_OFFSET} cy={CY} r={13.5} />
-          <path d={`M${CX - 2.5} ${CY - 1} Q${CX} ${CY - 3} ${CX + 2.5} ${CY - 1}`} />
+        <g fill="none" stroke={ink} strokeWidth={2}>
+          <circle cx={CX - EYE_OFFSET} cy={EYE_Y} r={9.5} />
+          <circle cx={CX + EYE_OFFSET} cy={EYE_Y} r={9.5} />
+          <path d={`M${CX - 1.5} ${EYE_Y - 1} Q${CX} ${EYE_Y - 2.5} ${CX + 1.5} ${EYE_Y - 1}`} />
         </g>
       )
     case 'headphones':
       return (
         <g>
-          <path
-            d={`M${left - 3} ${CY - 6} C${left - 3} ${top - 18} ${right + 3} ${top - 18} ${right + 3} ${CY - 6}`}
-            fill="none"
-            stroke="#3d4452"
-            strokeWidth={4}
-            strokeLinecap="round"
-          />
-          <rect x={left - 9} y={CY - 13} width={12} height={26} rx={6} fill="#3d4452" />
-          <rect x={right - 3} y={CY - 13} width={12} height={26} rx={6} fill="#3d4452" />
+          <path d="M13 50 C13 -6 107 -6 107 50" fill="none" stroke="#8a93a6" strokeWidth={4} strokeLinecap="round" />
+          <rect x={7} y={40} width={12} height={26} rx={6} fill="#8a93a6" />
+          <rect x={101} y={40} width={12} height={26} rx={6} fill="#8a93a6" />
         </g>
       )
     case 'bowtie': {
-      const y = top + height + 7
+      const y = 76
       return (
         <g fill="#d64550">
           <path d={`M${CX} ${y} L${CX - 13} ${y - 7} Q${CX - 15} ${y} ${CX - 13} ${y + 7} Z`} />
@@ -309,14 +272,12 @@ function AccessoryLayer({ accessory, ink, top, width, height, clipId }: Accessor
         </g>
       )
     }
-    case 'beanie': {
-      const depth = height * 0.3
+    case 'beanie':
       return (
         <g clipPath={`url(#${clipId})`}>
-          <rect x={left} y={top} width={width} height={depth} fill="#e4572e" />
-          <rect x={left} y={top + depth - 7} width={width} height={7} fill="#b83f1d" />
+          <rect x={0} y={BODY_TOP} width={120} height={17} fill="#e4572e" />
+          <rect x={0} y={BODY_TOP + 13} width={120} height={5} fill="#b83f1d" />
         </g>
       )
-    }
   }
 }

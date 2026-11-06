@@ -3,16 +3,16 @@ import {
   ACCESSORIES,
   AVATAR_STATES,
   EYE_STYLES,
-  HEAD_SHAPES,
+  GHOST_SHAPES,
   type AvatarConfig,
   type AvatarState
 } from '../../../shared/avatar'
 import { Avatar } from '../../avatar/Avatar'
-import { ACCESSORY_LABELS, EYE_LABELS, HEAD_LABELS } from '../../avatar/labels'
+import { ACCESSORY_LABELS, EYE_LABELS, SHAPE_LABELS } from '../../avatar/labels'
 import { Options, type StepProps } from './fields'
 
-const HEAD_SWATCHES = ['#ffffff', '#f4ead7', '#dff3e8', '#dbe7ff', '#ffe0e6', '#2b2f38']
-const ANTENNA_SWATCHES = ['#3b8cff', '#2e9e6b', '#e4572e', '#b5533c', '#8e5cf6', '#f2b705']
+const BODY_SWATCHES = ['#5be370', '#c8f031', '#6fb4ff', '#a98bff', '#ff85b8', '#ff9f57']
+const GLOW_SWATCHES = ['#ffffff', '#f1ffc9', '#d6f0ff', '#eadfff', '#ffe0ec', '#fff0c2']
 
 const STATE_LABELS: Record<AvatarState, string> = {
   idle: 'Repos',
@@ -81,23 +81,23 @@ export function StepAppearance({ draft, update }: StepProps): React.JSX.Element 
         </select>
       </div>
       <ColorRow
-        label="Couleur de la tête"
-        swatches={HEAD_SWATCHES}
-        value={draft.avatar.headColor}
-        onChange={(headColor) => set({ headColor })}
+        label="Couleur du fantôme"
+        swatches={BODY_SWATCHES}
+        value={draft.avatar.bodyColor}
+        onChange={(bodyColor) => set({ bodyColor })}
       />
       <ColorRow
-        label="Couleur de l'antenne"
-        swatches={ANTENNA_SWATCHES}
-        value={draft.avatar.antennaColor}
-        onChange={(antennaColor) => set({ antennaColor })}
+        label="Couleur de la lueur"
+        swatches={GLOW_SWATCHES}
+        value={draft.avatar.glowColor}
+        onChange={(glowColor) => set({ glowColor })}
       />
       <Options
-        label="Forme de la tête"
-        options={HEAD_SHAPES}
-        labels={HEAD_LABELS}
-        value={draft.avatar.headShape}
-        onChange={(headShape) => set({ headShape })}
+        label="Forme"
+        options={GHOST_SHAPES}
+        labels={SHAPE_LABELS}
+        value={draft.avatar.shape}
+        onChange={(shape) => set({ shape })}
       />
       <Options
         label="Yeux"

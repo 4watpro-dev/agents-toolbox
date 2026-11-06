@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { ACCESSORIES, DEFAULT_AVATAR, EYE_STYLES, HEAD_SHAPES } from './avatar'
+import { ACCESSORIES, DEFAULT_AVATAR, EYE_STYLES, GHOST_SHAPES, migrateLegacyAvatar } from './avatar'
 import { AgentToolsSchema, NO_TOOLS } from './tools'
 
 export const CATEGORIES = ['Travail', 'Écriture', 'Code', 'Perso', 'Autre'] as const
@@ -34,13 +34,16 @@ export const MAX_CATCHPHRASES = 3
 const ColorSchema = z.string().regex(/^#[0-9a-f]{6}$/i)
 const SliderSchema = z.number().int().min(0).max(100)
 
-const AvatarConfigSchema = z.object({
-  headColor: ColorSchema,
-  antennaColor: ColorSchema,
-  eyeStyle: z.enum(EYE_STYLES),
-  accessory: z.enum(ACCESSORIES),
-  headShape: z.enum(HEAD_SHAPES)
-})
+const AvatarConfigSchema = z.preprocess(
+  migrateLegacyAvatar,
+  z.object({
+    bodyColor: ColorSchema,
+    glowColor: ColorSchema,
+    eyeStyle: z.enum(EYE_STYLES),
+    accessory: z.enum(ACCESSORIES),
+    shape: z.enum(GHOST_SHAPES)
+  })
+)
 
 export const AgentDraftSchema = z.object({
   name: z.string().trim().min(1).max(40),

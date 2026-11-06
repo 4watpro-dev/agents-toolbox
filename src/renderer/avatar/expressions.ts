@@ -9,7 +9,10 @@ export interface Expression {
   eyeShape: 'open' | 'arc'
   blinks: boolean
   head: { y: number; rotate: number }
-  antenna: { rotate: number; glow: 'off' | 'on' | 'pulse'; dimmed?: boolean }
+  /** Aura derrière le fantôme : fixe à l'écoute, pulsée pendant la réflexion. */
+  aura: 'off' | 'on' | 'pulse'
+  /** Le fantôme devient plus transparent. */
+  dimmed?: boolean
   mouth?: string
   brows?: { left: string; right: string }
   cheeks?: boolean
@@ -23,7 +26,7 @@ export const EXPRESSIONS: Record<AvatarState, Expression> = {
     eyeShape: 'open',
     blinks: true,
     head: { y: 0, rotate: 0 },
-    antenna: { rotate: 0, glow: 'off' }
+    aura: 'off'
   },
   listening: {
     gaze: { x: 0, y: 0 },
@@ -32,16 +35,16 @@ export const EXPRESSIONS: Record<AvatarState, Expression> = {
     eyeShape: 'open',
     blinks: true,
     head: { y: 0, rotate: 2 },
-    antenna: { rotate: 0, glow: 'on' }
+    aura: 'on'
   },
   thinking: {
-    gaze: { x: 3, y: -6 },
+    gaze: { x: 2.5, y: -4 },
     leftEye: 0.94,
     rightEye: 0.94,
     eyeShape: 'open',
     blinks: false,
     head: { y: 0, rotate: -3 },
-    antenna: { rotate: 0, glow: 'pulse' }
+    aura: 'pulse'
   },
   happy: {
     gaze: { x: 0, y: 0 },
@@ -50,8 +53,8 @@ export const EXPRESSIONS: Record<AvatarState, Expression> = {
     eyeShape: 'arc',
     blinks: false,
     head: { y: -2, rotate: 0 },
-    antenna: { rotate: 0, glow: 'on' },
-    mouth: 'M53 79 Q60 86 67 79',
+    aura: 'on',
+    mouth: 'M54 56 Q60 62 66 56',
     cheeks: true
   },
   surprised: {
@@ -61,29 +64,30 @@ export const EXPRESSIONS: Record<AvatarState, Expression> = {
     eyeShape: 'open',
     blinks: false,
     head: { y: -3, rotate: 0 },
-    antenna: { rotate: 0, glow: 'on' },
-    mouth: 'M57 83 a3 3.5 0 1 0 6 0 a3 3.5 0 1 0 -6 0'
+    aura: 'on',
+    mouth: 'M57 60 a3 3.5 0 1 0 6 0 a3 3.5 0 1 0 -6 0'
   },
   confused: {
-    gaze: { x: -3, y: 0 },
+    gaze: { x: -2, y: 0 },
     leftEye: 1.1,
     rightEye: 0.78,
     eyeShape: 'open',
     blinks: true,
     head: { y: 0, rotate: -7 },
-    antenna: { rotate: 16, glow: 'off' },
-    mouth: 'M54 82 q3 -3 6 0 t6 0',
-    brows: { left: 'M36 47 L50 45', right: 'M70 50 L84 52' }
+    aura: 'off',
+    mouth: 'M54 60 q3 -3 6 0 t6 0',
+    brows: { left: 'M41 29 L52 27', right: 'M68 31 L79 33' }
   },
   sorry: {
-    gaze: { x: 0, y: 4 },
+    gaze: { x: 0, y: 3 },
     leftEye: 0.92,
     rightEye: 0.92,
     eyeShape: 'open',
     blinks: true,
     head: { y: 3, rotate: 0 },
-    antenna: { rotate: -22, glow: 'off', dimmed: true },
-    mouth: 'M53 85 Q60 79 67 85',
-    brows: { left: 'M36 53 L50 48', right: 'M70 48 L84 53' }
+    aura: 'off',
+    dimmed: true,
+    mouth: 'M54 62 Q60 56 66 62',
+    brows: { left: 'M42 33 L52 29', right: 'M68 29 L78 33' }
   }
 }

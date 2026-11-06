@@ -5,15 +5,13 @@ import { deflateSync } from 'node:zlib'
 
 const OVERSAMPLING = 4
 
-/** Vrai si le point (en unités d'une grille 16×16) est dans le robot. */
-function inRobot(x, y) {
-  const antennaBall = Math.hypot(x - 8, y - 2) <= 1.4
-  const antennaStem = Math.abs(x - 8) <= 0.5 && y >= 2 && y <= 5
-  // Tête en capsule : un rectangle aux extrémités arrondies.
-  const nearestX = Math.max(5.5, Math.min(x, 10.5))
-  const head = Math.hypot(x - nearestX, y - 9.5) <= 4.5
-  const eye = (cx) => ((x - cx) / 1.1) ** 2 + ((y - 9.5) / 1.6) ** 2 <= 1
-  return antennaBall || antennaStem || (head && !eye(6) && !eye(10))
+/** Vrai si le point (en unités d'une grille 16×16) est dans le fantôme. */
+function inGhost(x, y) {
+  const round = Math.hypot(x - 8, y - 7) <= 6
+  // Pointe de la goutte : un cône tangent au cercle, qui finit en y = 15.
+  const tip = y >= 11.5 && y <= 15 && Math.abs(x - 8) <= (15 - y) * 1.134
+  const eye = (cx) => ((x - cx) / 1) ** 2 + ((y - 6) / 1.5) ** 2 <= 1
+  return (round || tip) && !eye(6.2) && !eye(9.8)
 }
 
 function crc32(buffer) {
@@ -44,7 +42,7 @@ function png(size) {
         for (let sx = 0; sx < OVERSAMPLING; sx++) {
           const x = ((px + (sx + 0.5) / OVERSAMPLING) / size) * 16
           const y = ((py + (sy + 0.5) / OVERSAMPLING) / size) * 16
-          if (inRobot(x, y)) hits++
+          if (inGhost(x, y)) hits++
         }
       }
       row[1 + px * 4 + 3] = Math.round((hits / OVERSAMPLING ** 2) * 255)

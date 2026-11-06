@@ -1,7 +1,6 @@
-import { motion } from 'motion/react'
+import type { PanelState } from '../../shared/ipc'
 import { useEffect, useState } from 'react'
 import type { Agent } from '../../shared/agent'
-import type { Corner, PanelState } from '../../shared/ipc'
 import { AvatarPausedContext } from '../avatar/Avatar'
 import { AgentDetails } from './AgentDetails'
 import { AgentSwitcher } from './AgentSwitcher'
@@ -10,13 +9,6 @@ import { Gallery } from './Gallery'
 import { SettingsView } from './SettingsView'
 import { useAgents } from './useAgents'
 import { AgentWizard } from './wizard/AgentWizard'
-
-const TRANSFORM_ORIGIN: Record<Corner, string> = {
-  'top-left': 'top left',
-  'top-right': 'top right',
-  'bottom-left': 'bottom left',
-  'bottom-right': 'bottom right'
-}
 
 type View =
   | { name: 'gallery' }
@@ -66,13 +58,9 @@ export function Panel(): React.JSX.Element {
 
   return (
     <AvatarPausedContext.Provider value={!state.open}>
-    <motion.main
+    <main
       // Panneau caché : ses animations CSS s'arrêtent pour ne pas consommer de CPU.
       className={state.open ? 'panel' : 'panel panel-closed'}
-      style={{ transformOrigin: TRANSFORM_ORIGIN[state.corner] }}
-      initial={false}
-      animate={state.open ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.92 }}
-      transition={{ duration: state.open ? 0.16 : 0.1, ease: 'easeOut' }}
     >
       {error && (
         <p className="banner-error" role="alert">
@@ -128,7 +116,7 @@ export function Panel(): React.JSX.Element {
           onToggleFavorite={(agent) => setFavorite(agent.id, !agent.isFavorite)}
         />
       )}
-    </motion.main>
+    </main>
     </AvatarPausedContext.Provider>
   )
 }

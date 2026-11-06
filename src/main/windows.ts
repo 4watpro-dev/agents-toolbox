@@ -9,13 +9,17 @@ import { getSettings, updateSettings } from './store/settings'
 /** Horodatage (Date.now) du geste à l'origine de l'ouverture du panneau. */
 const TimestampSchema = z.number().finite().nonnegative()
 
-const WIDGET_SIZE = { width: 72, height: 72 }
-// 380×560 de contenu, plus 16 px de marge transparente pour l'ombre.
-const PANEL_SIZE = { width: 412, height: 592 }
-const EDGE_MARGIN = 8
+// Rond de 56 px, plus une marge transparente qui contient toute son ombre : une
+// ombre plus large serait coupée net par le bord de la fenêtre.
+const WIDGET_SIZE = { width: 80, height: 80 }
+const WIDGET_INSET = 12
+const PANEL_SIZE = { width: 380, height: 560 }
+const PANEL_GAP = 8
+const EDGE_MARGIN = 4
 const DRAG_INTERVAL_MS = 16
 const SNAP_DURATION_MS = 160
-const PANEL_CLOSE_MS = 120
+const PANEL_OPEN_MS = 130
+const PANEL_CLOSE_MS = 100
 // Un clic sur l'icône juste après une fermeture par perte de focus ne doit pas rouvrir.
 const REOPEN_GUARD_MS = 250
 
@@ -23,7 +27,7 @@ let widget: BrowserWindow
 let panel: BrowserWindow
 let dragTimer: NodeJS.Timeout | null = null
 let snapTimer: NodeJS.Timeout | null = null
-let closeTimer: NodeJS.Timeout | null = null
+let fadeTimer: NodeJS.Timeout | null = null
 let panelOpen = false
 let lastBlurCloseAt = 0
 
@@ -109,16 +113,45 @@ function sendPanelState(open: boolean, requestedAt: number): void {
   panel.webContents.send(IPC.panelState, state)
 }
 
+function stopFade(): void {
+  if (fadeTimer) clearInterval(fadeTimer)
+  fadeTimer = null
+}
+
+/** Fondu de toute la fenêtre : le fond de verre est natif, le CSS ne peut pas l'animer. */
+function fadePanel(to: number, duration: number, done?: () => void): void {
+  stopFade()
+  const from = panel.getOpacity()
+  const startedAt = Date.now()
+  fadeTimer = setInterval(() => {
+    const progress = Math.min(1, (Date.now() - startedAt) / duration)
+    panel.setOpacity(from + (to - from) * progress)
+    if (progress === 1) {
+      stopFade()
+      done?.()
+    }
+  }, DRAG_INTERVAL_MS)
+}
+
 export function openPanel(requestedAt = Date.now()): void {
-  if (closeTimer) clearTimeout(closeTimer)
-  closeTimer = null
+  stopFade()
+  if (!panel.isVisible()) panel.setOpacity(0)
   const { corner } = getSettings().widget
-  const position = panelPosition(corner, currentDisplay().workArea, widget.getBounds(), PANEL_SIZE, 0)
+  const bounds = widget.getBounds()
+  // Le panneau se cale sur le rond visible, pas sur la fenêtre et sa marge d'ombre.
+  const circle = {
+    x: bounds.x + WIDGET_INSET,
+    y: bounds.y + WIDGET_INSET,
+    width: bounds.width - WIDGET_INSET * 2,
+    height: bounds.height - WIDGET_INSET * 2
+  }
+  const position = panelPosition(corner, currentDisplay().workArea, circle, PANEL_SIZE, PANEL_GAP)
   panel.setBounds({ ...position, ...PANEL_SIZE })
   panelOpen = true
   sendPanelState(true, requestedAt)
   panel.show()
   panel.focus()
+  fadePanel(1, PANEL_OPEN_MS)
 }
 
 /**
@@ -144,8 +177,7 @@ export function closePanel(): void {
   if (!panelOpen) return
   panelOpen = false
   sendPanelState(false, 0)
-  // Laisse l'animation de fermeture se jouer avant de cacher la fenêtre.
-  closeTimer = setTimeout(() => panel.hide(), PANEL_CLOSE_MS)
+  fadePanel(0, PANEL_CLOSE_MS, () => panel.hide())
 }
 
 export function togglePanel(requestedAt = Date.now()): void {
@@ -226,8 +258,11 @@ function createPanel(): BrowserWindow {
     ...PANEL_SIZE,
     show: false,
     frame: false,
-    transparent: true,
-    hasShadow: false,
+    // Verre natif : macOS floute ce qui se trouve derrière la fenêtre, arrondit ses
+    // coins et dessine son ombre. Le CSS seul ne peut pas flouter le bureau.
+    vibrancy: 'under-window',
+    visualEffectState: 'active',
+    backgroundColor: '#00000000',
     resizable: false,
     minimizable: false,
     maximizable: false,
