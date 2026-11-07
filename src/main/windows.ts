@@ -30,6 +30,10 @@ let snapTimer: NodeJS.Timeout | null = null
 let fadeTimer: NodeJS.Timeout | null = null
 let panelOpen = false
 let lastBlurCloseAt = 0
+let dialogOpen = false
+let activateTimer: NodeJS.Timeout | null = null
+/** Délai avant d'ouvrir le panneau quand l'app passe au premier plan (Cmd+Tab, Dock). */
+const ACTIVATE_DELAY_MS = 150
 
 const securePreferences = {
   preload: join(__dirname, '../preload/index.js'),
@@ -159,13 +163,30 @@ export function openPanel(requestedAt = Date.now()): void {
  * tout. On le cache le temps du dialogue, puis on le rouvre sur le résultat.
  */
 export async function withPanelHidden<T>(action: () => Promise<T>): Promise<T> {
+  dialogOpen = true
   closePanel()
   app.focus({ steal: true })
   try {
     return await action()
   } finally {
+    dialogOpen = false
     openPanel()
   }
+}
+
+/**
+ * L'app passe au premier plan (Cmd+Tab, clic sur le Dock) : on ouvre le panneau.
+ * Le court délai laisse d'abord agir un clic sur l'icône ou le raccourci, qui
+ * activent aussi l'app et ouvrent déjà le panneau eux-mêmes.
+ */
+export function openPanelOnActivate(): void {
+  if (activateTimer) clearTimeout(activateTimer)
+  activateTimer = setTimeout(() => {
+    activateTimer = null
+    if (panelOpen || dialogOpen || dragTimer) return
+    if (Date.now() - lastBlurCloseAt < REOPEN_GUARD_MS) return
+    openPanel()
+  }, ACTIVATE_DELAY_MS)
 }
 
 export function openSettingsInPanel(): void {

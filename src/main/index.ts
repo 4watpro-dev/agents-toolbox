@@ -7,7 +7,8 @@ import { registerSettingsIpc } from './settingsIpc'
 import { registerTransferIpc } from './transferIpc'
 import { startShortcut } from './shortcut'
 import { createTray } from './tray'
-import { createWindows, openPanel } from './windows'
+import { migrateLoginItem } from './loginItem'
+import { createWindows, openPanel, openPanelOnActivate } from './windows'
 
 if (!app.requestSingleInstanceLock()) {
   app.quit()
@@ -21,7 +22,10 @@ if (!app.requestSingleInstanceLock()) {
     globalShortcut.unregisterAll()
   })
   void app.whenReady().then(() => {
-    app.dock?.hide()
+    // L'app reste dans le Dock et dans Cmd+Tab : y revenir ouvre le panneau.
+    app.on('activate', () => openPanelOnActivate())
+    app.on('did-become-active', () => openPanelOnActivate())
+    migrateLoginItem()
     // L'interface est toujours sombre : le verre natif doit l'être aussi, même si le Mac est en clair.
     nativeTheme.themeSource = 'dark'
     registerAgentIpc()

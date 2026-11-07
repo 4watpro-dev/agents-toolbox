@@ -16,17 +16,21 @@ npm install
 
 ## Lancement
 
+Pour installer l'app dans **Applications** :
+
 ```bash
-npm start
+npm run app
 ```
 
-Cette commande builde l'app puis la lance. Pour développer avec le rechargement à chaud :
+Cette commande fabrique `Agent Toolbox.app` et remplace la version déjà installée. Quitte l'app avant de la lancer. Ensuite, tu ouvres l'app comme les autres, depuis Spotlight, le Launchpad ou le Dock. Elle apparaît dans le Dock et dans Cmd+Tab, et y revenir ouvre le panneau. Après une modification du code, relance `npm run app` pour mettre l'app installée à jour. L'app est signée localement, sans compte développeur Apple : elle n'est faite que pour ce Mac.
+
+Pour développer, sans installer :
 
 ```bash
 npm run dev
 ```
 
-L'app n'est pas empaquetée : il n'y a ni `.app` ni `.dmg`. Il faut garder ce dossier en place, car le lancement au démarrage y fait référence.
+`npm start` builde puis lance le projet sans rechargement à chaud. L'icône de l'app se régénère avec `npm run icon`.
 
 ## Connexion à Claude
 
@@ -51,7 +55,7 @@ Le mode abonnement est prévu pour un usage personnel, sur ton propre Mac : Anth
 | Sauvegarder ou partager des agents | **⚙** pour tous, **⋯** sur une carte pour un seul |
 | Lancer au démarrage | **⚙**, ou le menu de l'icône dans la barre de menus |
 
-Après une mise à jour du code, relance `npm run build` : le lancement au démarrage utilise la version buildée.
+Avec l’app installée, le lancement au démarrage passe par l’option « Ouvrir à la connexion » de macOS. En mode développement, il lance la version buildée du projet : après une mise à jour du code, relance `npm run build`.
 
 ## Ce que peuvent faire les agents
 
@@ -103,7 +107,7 @@ Tout est dans `~/Library/Application Support/Agent Toolbox/`, en JSON non chiffr
 Deux emplacements en dehors de ce dossier :
 
 - **`~/.claude/projects/`** : les transcriptions que Claude Code garde pour reprendre une conversation.
-- **`~/Library/LaunchAgents/com.agenttoolbox.plist`** : créé seulement si tu actives le lancement au démarrage.
+- **`~/Library/LaunchAgents/com.agenttoolbox.plist`** : créé seulement en mode développement, si tu actives le lancement au démarrage. L’app installée le retire et utilise l’option de macOS à la place.
 
 Le contenu des conversations et les faits retenus sont envoyés à Claude pour obtenir une réponse. Un export ne contient que les fiches des agents, sans mémoire ni conversations.
 

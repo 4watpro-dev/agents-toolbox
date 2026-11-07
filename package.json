@@ -10,7 +10,9 @@
     "build": "electron-vite build",
     "start": "electron-vite build && electron .",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "icon": "node scripts/make-app-icon.mjs",
+    "app": "electron-vite build && electron-builder --mac --dir && rm -rf \"/Applications/Agent Toolbox.app\" && ditto \"dist/mac-arm64/Agent Toolbox.app\" \"/Applications/Agent Toolbox.app\""
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.4.0",
@@ -27,9 +29,32 @@
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.2.1",
     "electron": "^45.2.2",
+    "electron-builder": "^26.18.0",
     "electron-vite": "^6.0.0",
     "typescript": "^7.0.2",
     "vite": "^8.3.5",
     "vitest": "^4.1.12"
+  },
+  "build": {
+    "appId": "com.agenttoolbox.app",
+    "productName": "Agent Toolbox",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "out/**",
+      "resources/**",
+      "package.json"
+    ],
+    "mac": {
+      "target": [
+        "dir"
+      ],
+      "icon": "build/icon.png",
+      "category": "public.app-category.productivity",
+      "identity": "-",
+      "hardenedRuntime": false
+    }
   }
 }
