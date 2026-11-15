@@ -3,11 +3,6 @@
   overflow: visible;
 }
 
-.avatar-ground {
-  fill: rgb(0 0 0 / 38%);
-  filter: blur(2px);
-}
-
 /* Léger flottement au repos. */
 .avatar-float {
   animation: avatar-float 3.6s ease-in-out infinite;

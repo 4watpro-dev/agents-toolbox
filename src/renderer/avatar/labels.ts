@@ -10,7 +10,8 @@ export const EYE_LABELS: Record<EyeStyle, string> = {
 export const SHAPE_LABELS: Record<GhostShape, string> = {
   drop: 'Goutte',
   classic: 'Classique',
-  round: 'Bulle'
+  round: 'Bulle',
+  sheet: 'Drap'
 }
 
 export const ACCESSORY_LABELS: Record<Accessory, string> = {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { DEFAULT_AVATAR, faceColor, luminance, migrateLegacyAvatar } from './avatar'
+import { DEFAULT_AVATAR, faceColor, glassPalette, luminance, migrateLegacyAvatar, mixColor, shiftHue } from './avatar'
 
 describe('luminance', () => {
   it('donne 0 pour le noir et 1 pour le blanc', () => {
@@ -9,14 +9,42 @@ describe('luminance', () => {
 })
 
 describe('faceColor', () => {
-  it('met des yeux sombres sur un corps clair', () => {
-    expect(faceColor('#ffffff')).toBe('#20242c')
-    expect(faceColor('#ffd166')).toBe('#20242c')
+  it('met des yeux blancs sur un verre teinté, même vif', () => {
+    expect(faceColor('#3a0ca3')).toBe('#ffffff')
+    expect(faceColor('#5be370')).toBe('#ffffff')
+    expect(faceColor('#6fb4ff')).toBe('#ffffff')
   })
 
-  it('met des yeux clairs sur un corps très sombre', () => {
-    expect(faceColor('#1f2937')).toBe('#f5f7fa')
-    expect(faceColor('#3a0ca3')).toBe('#f5f7fa')
+  it('met des yeux sombres sur un fantôme presque blanc', () => {
+    expect(faceColor('#ffffff')).toBe('#20242c')
+    expect(faceColor('#f4f1ea')).toBe('#20242c')
+  })
+})
+
+describe('mixColor', () => {
+  it('va de la première à la seconde couleur', () => {
+    expect(mixColor('#000000', '#ffffff', 0)).toBe('#000000')
+    expect(mixColor('#000000', '#ffffff', 1)).toBe('#ffffff')
+    expect(mixColor('#000000', '#ff0000', 0.5)).toBe('#800000')
+  })
+})
+
+describe('shiftHue', () => {
+  it('tourne la teinte sans changer le gris', () => {
+    expect(shiftHue('#ff0000', 120)).toBe('#00ff00')
+    expect(shiftHue('#ff0000', -120)).toBe('#0000ff')
+    expect(shiftHue('#808080', 90)).toBe('#808080')
+  })
+})
+
+describe('glassPalette', () => {
+  it('fonce le cœur et donne au violet un reflet bleu-cyan', () => {
+    const palette = glassPalette('#4a2df5', '#ffffff')
+    expect(luminance(palette.core)).toBeLessThan(luminance('#4a2df5'))
+    expect(luminance(palette.edge)).toBeGreaterThan(luminance('#4a2df5'))
+    const [r, g, b] = [1, 3, 5].map((i) => parseInt(palette.reflection.slice(i, i + 2), 16))
+    expect(b).toBeGreaterThan(r!)
+    expect(g).toBeGreaterThan(r!)
   })
 })
 
