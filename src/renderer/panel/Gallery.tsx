@@ -5,6 +5,7 @@ import { MIN_QUERY_LENGTH, type SearchHit } from '../../shared/history'
 import type { TransferResult } from '../../shared/ipc'
 import { AgentCard } from './AgentCard'
 import { ConversationResults } from './ConversationResults'
+import { TeamIcon } from './icons'
 
 /** Attente après la dernière frappe avant de chercher dans les conversations. */
 const SEARCH_DELAY_MS = 180
@@ -16,6 +17,7 @@ interface GalleryProps {
   onOpenConversation(agentId: string, conversationId: string): void
   onOpenSettings(): void
   onCreate(): void
+  onOpenTeam(): void
   onEdit(agent: Agent): void
   onRemove(agent: Agent): void
   onToggleFavorite(agent: Agent): void
@@ -28,6 +30,7 @@ export function Gallery({
   onOpenConversation,
   onOpenSettings,
   onCreate,
+  onOpenTeam,
   onEdit,
   onRemove,
   onToggleFavorite
@@ -80,6 +83,16 @@ export function Gallery({
             value={query}
             onChange={(event) => setQuery(event.target.value)}
           />
+          <button
+            type="button"
+            className="button-icon"
+            aria-label="Équipes"
+            title="Équipes"
+            disabled={agents.length < 2}
+            onClick={onOpenTeam}
+          >
+            <TeamIcon size={18} />
+          </button>
           <button type="button" className="button-icon" aria-label="Réglages" title="Réglages" onClick={onOpenSettings}>
             ⚙
           </button>

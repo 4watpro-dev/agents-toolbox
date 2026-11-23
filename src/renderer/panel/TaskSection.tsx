@@ -1,18 +1,24 @@
 import { useCallback, useEffect, useState } from 'react'
-import type { Agent } from '../../shared/agent'
 import type { TaskView } from '../../shared/ipc'
 import { DAY_LABELS, describeDate, describeSchedule, DISPLAY_DAYS, WEEKDAYS, type TaskInput } from '../../shared/schedule'
 import { TrashIcon } from './icons'
 
+/** À qui appartiennent les tâches : un agent seul, ou une équipe. */
+export type TaskOwner = { kind: 'agent'; id: string; name: string } | { kind: 'team'; id: string; name: string }
+
 interface TaskSectionProps {
-  agent: Agent
+  owner: TaskOwner
   onOpenConversation(id: string): void
 }
 
 const ALL_DAYS = [0, 1, 2, 3, 4, 5, 6]
 
-function emptyInput(agentId: string): TaskInput {
-  return { agentId, title: '', prompt: '', schedule: { days: [...WEEKDAYS], time: '09:00' }, enabled: true }
+function ownerIds(owner: TaskOwner): { agentId: string | null; teamId: string | null } {
+  return owner.kind === 'agent' ? { agentId: owner.id, teamId: null } : { agentId: null, teamId: owner.id }
+}
+
+function emptyInput(owner: TaskOwner): TaskInput {
+  return { ...ownerIds(owner), title: '', prompt: '', schedule: { days: [...WEEKDAYS], time: '09:00' }, enabled: true }
 }
 
 function sameDays(a: number[], b: readonly number[]): boolean {
@@ -20,7 +26,8 @@ function sameDays(a: number[], b: readonly number[]): boolean {
 }
 
 /** Tâches programmées d'un agent : liste, état de la dernière exécution, et formulaire. */
-export function TaskSection({ agent, onOpenConversation }: TaskSectionProps): React.JSX.Element {
+export function TaskSection({ owner, onOpenConversation }: TaskSectionProps): React.JSX.Element {
+  const subject = owner.kind === 'agent' ? owner.name : `L'équipe ${owner.name}`
   const [tasks, setTasks] = useState<TaskView[]>([])
   /** Tâche en cours d'édition : `null` pour une nouvelle, absente quand le formulaire est fermé. */
   const [editing, setEditing] = useState<{ id: string | null; input: TaskInput } | null>(null)
@@ -28,8 +35,8 @@ export function TaskSection({ agent, onOpenConversation }: TaskSectionProps): Re
   const [confirmingId, setConfirmingId] = useState<string | null>(null)
 
   const refresh = useCallback(() => {
-    void window.toolbox.tasks.list(agent.id).then(setTasks)
-  }, [agent.id])
+    void window.toolbox.tasks.list(owner.kind === 'agent' ? { agentId: owner.id } : { teamId: owner.id }).then(setTasks)
+  }, [owner.kind, owner.id])
 
   useEffect(() => {
     refresh()
@@ -49,8 +56,8 @@ export function TaskSection({ agent, onOpenConversation }: TaskSectionProps): Re
   }
 
   async function toggle(task: TaskView): Promise<void> {
-    const { agentId, title, prompt, schedule } = task
-    await window.toolbox.tasks.save(task.id, { agentId, title, prompt, schedule, enabled: !task.enabled })
+    const { agentId, teamId, title, prompt, schedule } = task
+    await window.toolbox.tasks.save(task.id, { agentId, teamId, title, prompt, schedule, enabled: !task.enabled })
     refresh()
   }
 
@@ -69,13 +76,13 @@ export function TaskSection({ agent, onOpenConversation }: TaskSectionProps): Re
       <div className="section-title">
         <h2>Tâches programmées</h2>
         {!editing && (
-          <button type="button" className="button" onClick={() => setEditing({ id: null, input: emptyInput(agent.id) })}>
+          <button type="button" className="button" onClick={() => setEditing({ id: null, input: emptyInput(owner) })}>
             Nouvelle
           </button>
         )}
       </div>
       <p className="field-hint">
-        {agent.name} les exécute seul, à l'heure dite, tant que ton Mac est allumé. Une tâche manquée est rattrapée au retour.
+        {subject} les exécute seul{owner.kind === 'team' ? 'e' : ''}, à l'heure dite, tant que ton Mac est allumé. Une tâche manquée est rattrapée au retour.
         Le résultat t'attend dans une conversation, avec une notification.
       </p>
 
@@ -119,7 +126,7 @@ export function TaskSection({ agent, onOpenConversation }: TaskSectionProps): Re
                   {!task.enabled ? ' · désactivée' : ''}
                 </p>
                 {task.running ? (
-                  <p className="task-status">{agent.name} y travaille…</p>
+                  <p className="task-status">{subject} y travaille…</p>
                 ) : task.lastStatus === 'ok' && task.lastConversationId ? (
                   <p className="task-status">
                     Dernier résultat : {task.lastRunAt ? describeDate(new Date(task.lastRunAt)) : ''} ·{' '}
@@ -138,8 +145,8 @@ export function TaskSection({ agent, onOpenConversation }: TaskSectionProps): Re
                     type="button"
                     className="button"
                     onClick={() => {
-                      const { agentId, title, prompt, schedule, enabled } = task
-                      setEditing({ id: task.id, input: { agentId, title, prompt, schedule, enabled } })
+                      const { agentId, teamId, title, prompt, schedule, enabled } = task
+                      setEditing({ id: task.id, input: { agentId, teamId, title, prompt, schedule, enabled } })
                     }}
                   >
                     Modifier
@@ -176,7 +183,7 @@ export function TaskSection({ agent, onOpenConversation }: TaskSectionProps): Re
               className="input"
               rows={4}
               maxLength={4000}
-              placeholder={`Ce que ${agent.name} doit faire à chaque fois`}
+              placeholder={`Ce que ${owner.kind === 'agent' ? owner.name : "l'équipe"} doit faire à chaque fois`}
               value={editing.input.prompt}
               onChange={(event) => update({ prompt: event.target.value })}
             />

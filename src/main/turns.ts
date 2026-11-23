@@ -24,6 +24,11 @@ export interface TurnRequest {
    * actions attendent une confirmation que personne ne donnerait.
    */
   unattended?: boolean
+  /**
+   * Étape d'un travail d'équipe : l'agent garde sa mémoire et ses documents, mais
+   * l'échange n'est pas enregistré dans son historique (l'équipe enregistre le sien).
+   */
+  ephemeral?: boolean
 }
 
 /** Tours en cours. Retirer une entrée rend muette la fin d'un tour annulé par une suppression. */
@@ -44,7 +49,7 @@ export function runTurn(request: TurnRequest, deliver: (event: ChatEvent) => voi
   const metas = attachments.map((attachment) => attachment.meta)
   const userTurn: Turn = metas.length > 0 ? { role: 'user', text, attachments: metas } : { role: 'user', text }
 
-  const conversation = agentId ? getConversation(agentId, sessionId) : null
+  const conversation = agentId && !request.ephemeral ? getConversation(agentId, sessionId) : null
   const facts = agentId ? getFacts(agentId) : []
   const wanted = resolveConnectors(draft.tools.connectors)
   // L'API exécuterait les actions de ses connecteurs sans passer par une confirmation.
@@ -54,7 +59,7 @@ export function runTurn(request: TurnRequest, deliver: (event: ChatEvent) => voi
   const knowledge = folder?.ok && usesSubscription() ? folder : null
   const context = {
     systemPrompt: buildSystemPrompt(draft, facts, {
-      remember: agentId !== null,
+      remember: agentId !== null && !request.ephemeral,
       connectors: connectors.map((c) => c.name),
       knowledge: knowledge?.name ?? null
     }),
@@ -83,7 +88,7 @@ export function runTurn(request: TurnRequest, deliver: (event: ChatEvent) => voi
       outgoing = { ...event, text: piece }
     } else {
       activeTurns.delete(sessionId)
-      if (agentId) {
+      if (agentId && !request.ephemeral) {
         if (event.type === 'done') {
           appendTurns(agentId, sessionId, [userTurn, { role: 'assistant', text: turn.visibleText.trim() }], resumeIdToKeep())
           outgoing = { ...event, facts: rememberFacts(agentId, event.facts) }
@@ -94,6 +99,7 @@ export function runTurn(request: TurnRequest, deliver: (event: ChatEvent) => voi
           setClaudeSession(agentId, sessionId, null)
         }
       } else if (event.type === 'done') {
+        // Rien n'est enregistré : les faits proposés ne sont pas retenus non plus.
         outgoing = { ...event, facts: [] }
       }
     }

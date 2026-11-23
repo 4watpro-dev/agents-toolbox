@@ -5,7 +5,9 @@ import { listAgents } from './store/agents'
 import { setConversationTitle } from './store/conversations'
 import { listTasks, updateTaskRun } from './store/tasks'
 import { collectReply, runTurn } from './turns'
-import { openConversationInPanel, setWidgetBadge } from './windows'
+import { getTeam } from './store/teams'
+import { runTeam } from './team'
+import { openConversationInPanel, openTeamConversationInPanel, setWidgetBadge } from './windows'
 
 const CHECK_INTERVAL_MS = 30_000
 /** Laisse l'app finir de démarrer avant de rattraper les tâches manquées. */
@@ -20,10 +22,18 @@ export function onTasksChanged(listener: () => void): void {
   onChange = listener
 }
 
-function notify(title: string, body: string, open?: { agentId: string; conversationId: string }): void {
+function notify(
+  title: string,
+  body: string,
+  open?: { agentId: string; conversationId: string } | { teamId: string; conversationId: string }
+): void {
   if (!Notification.isSupported()) return
   const notification = new Notification({ title, body, silent: false })
-  if (open) notification.on('click', () => openConversationInPanel(open.agentId, open.conversationId))
+  if (open) {
+    notification.on('click', () =>
+      'agentId' in open ? openConversationInPanel(open.agentId, open.conversationId) : openTeamConversationInPanel(open.teamId, open.conversationId)
+    )
+  }
   notification.show()
 }
 
@@ -32,10 +42,38 @@ function preview(text: string): string {
   return flat.length > PREVIEW_LENGTH ? `${flat.slice(0, PREVIEW_LENGTH - 1)}…` : flat
 }
 
+/** Tâche d'équipe : l'équipe travaille dans une nouvelle conversation de son historique. */
+async function runTeamTask(task: Task, teamId: string): Promise<void> {
+  const team = getTeam(teamId)
+  const startedAt = new Date()
+  if (!team) {
+    updateTaskRun(task.id, { lastRunAt: startedAt.toISOString(), lastStatus: 'error', lastMessage: "L'équipe de cette tâche n'existe plus.", lastConversationId: null })
+    onChange()
+    return
+  }
+  running.add(task.id)
+  const conversationId = randomUUID()
+  updateTaskRun(task.id, { lastRunAt: startedAt.toISOString(), lastStatus: null, lastMessage: null, lastConversationId: conversationId })
+  onChange()
+  const text = `[Tâche programmée « ${task.title} », ${describeDate(startedAt)}]\n\n${task.prompt}`
+  const outcome = await runTeam({ teamId, conversationId, text, scheduledTitle: task.title }, () => undefined)
+  running.delete(task.id)
+  if (outcome.ok) {
+    updateTaskRun(task.id, { lastRunAt: startedAt.toISOString(), lastStatus: 'ok', lastMessage: null, lastConversationId: conversationId })
+    setWidgetBadge(true)
+    notify(`L'équipe ${team.name} a terminé « ${task.title} »`, preview(outcome.answer) || 'Le résultat t’attend dans le panneau.', { teamId, conversationId })
+  } else {
+    updateTaskRun(task.id, { lastRunAt: startedAt.toISOString(), lastStatus: 'error', lastMessage: outcome.message, lastConversationId: null })
+    notify(`La tâche « ${task.title} » a échoué`, outcome.message)
+  }
+  onChange()
+}
+
 /** Exécute une tâche dans une nouvelle conversation, sans fenêtre ouverte. */
 export async function runTask(task: Task): Promise<void> {
   if (running.has(task.id)) return
-  const agent = listAgents().find((candidate) => candidate.id === task.agentId)
+  if (task.teamId) return runTeamTask(task, task.teamId)
+  const agent = task.agentId ? listAgents().find((candidate) => candidate.id === task.agentId) : undefined
   const startedAt = new Date()
   if (!agent) {
     updateTaskRun(task.id, { lastRunAt: startedAt.toISOString(), lastStatus: 'error', lastMessage: "L'agent de cette tâche n'existe plus.", lastConversationId: null })

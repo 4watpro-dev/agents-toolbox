@@ -153,7 +153,7 @@ export function AgentDetails({
           </ul>
         </section>
 
-        <TaskSection agent={agent} onOpenConversation={onOpenConversation} />
+        <TaskSection owner={{ kind: 'agent', id: agent.id, name: agent.name }} onOpenConversation={onOpenConversation} />
 
         <section className="settings-section">
           <h2>Mémoire</h2>

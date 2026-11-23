@@ -8,6 +8,7 @@ const weekdays = { days: [1, 2, 3, 4, 5], time: '09:00' }
 const task = (overrides: Partial<Task> = {}): Task => ({
   id: '00000000-0000-4000-8000-000000000001',
   agentId: '00000000-0000-4000-8000-000000000002',
+  teamId: null,
   title: 'Brief',
   prompt: 'Prépare le brief',
   schedule: weekdays,

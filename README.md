@@ -58,6 +58,8 @@ Le mode abonnement est prévu pour un usage personnel, sur ton propre Mac : Anth
 | Épingler ou exporter une conversation | **☰**, puis l'épingle (elle reste en tête) ou la flèche (fichier Markdown) |
 | Programmer une tâche | **☰**, section **Tâches programmées** : un nom, une consigne, des jours et une heure. Le résultat arrive dans une conversation, avec une notification et une pastille sur l'icône |
 | Donner des documents à un agent | **✎** sur l'agent, étape des compétences, **Dossier de documents** : l'agent y cherche et lit les fichiers utiles (texte, PDF, images), en lecture seule. Avec ton abonnement uniquement |
+| Faire travailler une équipe | Icône **équipes** en haut de la galerie : crée une équipe (un nom, un chef d'orchestre, 1 à 4 membres). Le chef répartit, chaque membre fait sa part, puis le chef rédige la réponse |
+| Historique et tâches d'une équipe | **☰** dans le chat de l'équipe : ses conversations (avec le travail de chaque membre) et ses tâches programmées. **✎** pour la modifier ou la supprimer |
 | Sauvegarder ou partager des agents | **⚙** pour tous, **⋯** sur une carte pour un seul |
 | Lancer au démarrage | **⚙**, ou le menu de l'icône dans la barre de menus |
 

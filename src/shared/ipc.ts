@@ -9,6 +9,8 @@ import type { Connector, ConnectorInput } from './connectors'
 import type { Conversation, ConversationSummary } from './conversation'
 import type { SearchHit } from './history'
 import type { Task, TaskInput } from './schedule'
+import type { Assignment } from './team'
+import type { Team, TeamConversation, TeamConversationSummary, TeamInput } from './teams'
 
 export const CORNERS = ['top-left', 'top-right', 'bottom-left', 'bottom-right'] as const
 export type Corner = (typeof CORNERS)[number]
@@ -72,6 +74,16 @@ export const IPC = {
   subscriptionLogin: 'subscription:login',
   generateAgent: 'generate:agent',
   knowledgeChoose: 'knowledge:choose',
+  teamRun: 'team:run',
+  teamsList: 'teams:list',
+  teamsSave: 'teams:save',
+  teamsRemove: 'teams:remove',
+  teamConversationsList: 'team-conversations:list',
+  teamConversationsGet: 'team-conversations:get',
+  teamConversationsDelete: 'team-conversations:delete',
+  teamContinueWithChief: 'team:continue-with-chief',
+  teamStop: 'team:stop',
+  teamEvent: 'team:event',
   copyText: 'clipboard:copy'
 } as const
 
@@ -119,8 +131,39 @@ export interface TaskView extends Task {
   running: boolean
 }
 
+/** Déroulé d'un travail d'équipe, envoyé au fil de l'eau. */
+export type TeamEvent = { conversationId: string } & (
+  | { type: 'phase'; phase: 'plan' | 'synthesis' }
+  | { type: 'plan'; assignments: Assignment[] }
+  | { type: 'member-start'; agentId: string }
+  | { type: 'member-delta'; agentId: string; text: string }
+  | { type: 'member-done'; agentId: string; problem?: string }
+  | { type: 'delta'; text: string }
+  | { type: 'done'; answer: string }
+  | { type: 'stopped' }
+  | { type: 'error'; message: string }
+)
+
+export interface TeamApi {
+  list(): Promise<Team[]>
+  /** `id` nul : crée une équipe. */
+  save(id: string | null, input: TeamInput): Promise<Result<Team>>
+  /** Supprime l'équipe, son historique et ses tâches. */
+  remove(id: string): Promise<void>
+  conversations(teamId: string): Promise<TeamConversationSummary[]>
+  conversation(teamId: string, id: string): Promise<TeamConversation | null>
+  removeConversation(teamId: string, id: string): Promise<void>
+  /** Lance une demande dans une conversation d'équipe (nouvelle ou existante). */
+  run(teamId: string, conversationId: string, text: string): void
+  stop(conversationId: string): void
+  onEvent(listener: (event: TeamEvent) => void): () => void
+  /** Recopie la conversation chez le chef et renvoie où l'ouvrir. */
+  continueWithChief(teamId: string, conversationId: string): Promise<Result<{ agentId: string; conversationId: string }>>
+}
+
 export interface TasksApi {
-  list(agentId: string): Promise<TaskView[]>
+  /** Tâches d'un agent ou d'une équipe. */
+  list(owner: { agentId: string } | { teamId: string }): Promise<TaskView[]>
   /** `id` nul : crée une tâche. */
   save(id: string | null, input: TaskInput): Promise<Result<TaskView>>
   remove(id: string): Promise<void>
@@ -130,7 +173,10 @@ export interface TasksApi {
 }
 
 /** Où le panneau doit aller : les réglages, ou une conversation précise. */
-export type PanelNavigation = 'settings' | { agentId: string; conversationId: string }
+export type PanelNavigation =
+  | 'settings'
+  | { agentId: string; conversationId: string }
+  | { teamId: string; conversationId: string }
 
 export interface PanelApi {
   onState(listener: (state: PanelState) => void): () => void
@@ -239,6 +285,7 @@ export interface ToolboxApi {
   chat: ChatApi
   connectors: ConnectorsApi
   tasks: TasksApi
+  team: TeamApi
   generateAgent(description: string): Promise<Result<AgentDraft>>
   /** Choisit un dossier de documents. `null` : choix annulé. */
   chooseKnowledgeFolder(): Promise<Result<{ path: string; name: string } | null>>

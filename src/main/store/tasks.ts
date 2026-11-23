@@ -50,6 +50,11 @@ export function removeTask(id: string): void {
   persist(listTasks().filter((task) => task.id !== id))
 }
 
+/** Les tâches d'une équipe supprimée disparaissent avec elle. */
+export function removeTeamTasks(teamId: string): void {
+  persist(listTasks().filter((task) => task.teamId !== teamId))
+}
+
 /** Les tâches d'un agent supprimé disparaissent avec lui. */
 export function removeAgentTasks(agentId: string): void {
   persist(listTasks().filter((task) => task.agentId !== agentId))

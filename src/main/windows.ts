@@ -220,6 +220,12 @@ export function openSettingsInPanel(): void {
   openPanel()
 }
 
+/** Ouvre le panneau sur une conversation d'équipe (clic sur une notification). */
+export function openTeamConversationInPanel(teamId: string, conversationId: string): void {
+  panel.webContents.send(IPC.panelNavigate, { teamId, conversationId })
+  openPanel()
+}
+
 /** Ouvre le panneau sur une conversation précise (reprise depuis la palette). */
 export function openConversationInPanel(agentId: string, conversationId: string): void {
   panel.webContents.send(IPC.panelNavigate, { agentId, conversationId })

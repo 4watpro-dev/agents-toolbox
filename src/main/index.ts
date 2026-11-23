@@ -10,6 +10,7 @@ import { createTray } from './tray'
 import { migrateLoginItem } from './loginItem'
 import { createPalette } from './palette'
 import { registerTaskIpc } from './taskIpc'
+import { registerTeamIpc } from './teamIpc'
 import { createWindows, openPanel, openPanelOnActivate } from './windows'
 
 if (!app.requestSingleInstanceLock()) {
@@ -38,6 +39,7 @@ if (!app.requestSingleInstanceLock()) {
     createPalette()
     createTray()
     registerTaskIpc()
+    registerTeamIpc()
     startShortcut()
   })
 }

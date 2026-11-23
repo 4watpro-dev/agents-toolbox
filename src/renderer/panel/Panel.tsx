@@ -9,6 +9,12 @@ import { Gallery } from './Gallery'
 import { SettingsView } from './SettingsView'
 import { useAgents } from './useAgents'
 import { AgentWizard } from './wizard/AgentWizard'
+import type { Team } from '../../shared/teams'
+import { TeamChat } from './team/TeamChat'
+import { TeamDetails } from './team/TeamDetails'
+import { TeamEditor } from './team/TeamEditor'
+import { TeamsList } from './team/TeamsList'
+import { useTeams } from './team/useTeams'
 
 type View =
   | { name: 'gallery' }
@@ -16,11 +22,16 @@ type View =
   | { name: 'agent'; agentId: string; conversationId: string }
   | { name: 'details'; agentId: string; conversationId: string }
   | { name: 'settings'; returnTo: View }
+  | { name: 'teams' }
+  | { name: 'team-editor'; team: Team | null; returnTo: View }
+  | { name: 'team'; teamId: string; conversationId: string }
+  | { name: 'team-details'; teamId: string; conversationId: string }
 
 export function Panel(): React.JSX.Element {
   const [state, setState] = useState<PanelState>({ open: false, corner: 'bottom-right', requestedAt: 0 })
   const [view, setView] = useState<View>({ name: 'gallery' })
   const { agents, error, reload, save, remove, setFavorite } = useAgents()
+  const { teams, reload: reloadTeams } = useTeams()
   const openSettings = (): void =>
     setView((current) => (current.name === 'settings' ? current : { name: 'settings', returnTo: current }))
 
@@ -29,6 +40,7 @@ export function Panel(): React.JSX.Element {
     () =>
       window.toolbox.panel.onNavigate((target) => {
         if (target === 'settings') openSettings()
+        else if ('teamId' in target) setView({ name: 'team', teamId: target.teamId, conversationId: target.conversationId })
         else setView({ name: 'agent', agentId: target.agentId, conversationId: target.conversationId })
       }),
     []
@@ -60,6 +72,14 @@ export function Panel(): React.JSX.Element {
     setView({ name: 'agent', agentId: agent.id, conversationId: conversations[0]?.id ?? crypto.randomUUID() })
   }
 
+  /** Rouvre la dernière conversation de l'équipe, ou en commence une nouvelle. */
+  async function openTeam(team: Team): Promise<void> {
+    const conversations = await window.toolbox.team.conversations(team.id)
+    setView({ name: 'team', teamId: team.id, conversationId: conversations[0]?.id ?? crypto.randomUUID() })
+  }
+
+  const viewTeam = view.name === 'team' || view.name === 'team-details' ? teams.find((team) => team.id === view.teamId) : undefined
+
   const conversationAgent =
     view.name === 'agent' || view.name === 'details' ? agents.find((agent) => agent.id === view.agentId) : undefined
 
@@ -74,7 +94,50 @@ export function Panel(): React.JSX.Element {
           {error}
         </p>
       )}
-      {view.name === 'settings' ? (
+      {view.name === 'teams' ? (
+        <TeamsList
+          teams={teams}
+          agents={agents}
+          onBack={() => setView({ name: 'gallery' })}
+          onOpen={(team) => void openTeam(team)}
+          onCreate={() => setView({ name: 'team-editor', team: null, returnTo: { name: 'teams' } })}
+        />
+      ) : view.name === 'team-editor' ? (
+        <TeamEditor
+          team={view.team}
+          agents={agents}
+          onCancel={() => setView(view.returnTo)}
+          onSaved={(team) => {
+            reloadTeams()
+            setView({ name: 'team', teamId: team.id, conversationId: crypto.randomUUID() })
+          }}
+          onDeleted={() => {
+            reloadTeams()
+            setView({ name: 'teams' })
+          }}
+        />
+      ) : view.name === 'team' && viewTeam ? (
+        <TeamChat
+          team={viewTeam}
+          agents={agents}
+          conversationId={view.conversationId}
+          panelOpen={state.open}
+          onBack={() => setView({ name: 'teams' })}
+          onNew={() => setView({ ...view, conversationId: crypto.randomUUID() })}
+          onDetails={() => setView({ ...view, name: 'team-details' })}
+          onEdit={() => setView({ name: 'team-editor', team: viewTeam, returnTo: view })}
+          onOpenChiefConversation={(agentId, conversationId) => setView({ name: 'agent', agentId, conversationId })}
+        />
+      ) : view.name === 'team-details' && viewTeam ? (
+        <TeamDetails
+          team={viewTeam}
+          currentConversationId={view.conversationId}
+          onBack={() => setView({ ...view, name: 'team' })}
+          onOpenConversation={(conversationId) => setView({ name: 'team', teamId: view.teamId, conversationId })}
+          onNewConversation={() => setView({ name: 'team', teamId: view.teamId, conversationId: crypto.randomUUID() })}
+          onEdit={() => setView({ name: 'team-editor', team: viewTeam, returnTo: view })}
+        />
+      ) : view.name === 'settings' ? (
         <SettingsView panelOpen={state.open} onBack={() => setView(view.returnTo)} onAgentsChanged={reload} />
       ) : view.name === 'wizard' ? (
         <AgentWizard
@@ -122,6 +185,10 @@ export function Panel(): React.JSX.Element {
           }}
           onOpenSettings={openSettings}
           onCreate={() => setView({ name: 'wizard', agent: null })}
+          onOpenTeam={() => {
+            reloadTeams()
+            setView({ name: 'teams' })
+          }}
           onEdit={(agent) => setView({ name: 'wizard', agent })}
           onRemove={remove}
           onToggleFavorite={(agent) => setFavorite(agent.id, !agent.isFavorite)}

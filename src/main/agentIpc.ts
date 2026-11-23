@@ -6,6 +6,7 @@ import { IPC } from '../shared/ipc'
 import { listAgents, removeAgent, saveAgent, setFavorite } from './store/agents'
 import { deleteAgentData } from './store/conversations'
 import { removeAgentTasks } from './store/tasks'
+import { removeAgentFromTeams } from './store/teams'
 import { getSettings, updateSettings } from './store/settings'
 import { sendWidgetAvatar } from './windows'
 
@@ -38,6 +39,7 @@ export function registerAgentIpc(): void {
     removeAgent(agentId)
     deleteAgentData(agentId)
     removeAgentTasks(agentId)
+    removeAgentFromTeams(agentId)
     if (getSettings().lastAgentId === agentId) updateSettings({ lastAgentId: null })
     sendWidgetAvatar(widgetAvatar())
   })

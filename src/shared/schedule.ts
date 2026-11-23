@@ -16,7 +16,9 @@ export const ScheduleSchema = z.object({
 export type Schedule = z.infer<typeof ScheduleSchema>
 
 export const TaskInputSchema = z.object({
-  agentId: z.uuid(),
+  /** Exécutant : un agent seul, ou une équipe (l'un des deux, jamais les deux). */
+  agentId: z.uuid().nullable(),
+  teamId: z.uuid().nullable().default(null),
   title: z.string().trim().min(1).max(80),
   prompt: z.string().trim().min(1).max(4000),
   schedule: ScheduleSchema,

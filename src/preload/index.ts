@@ -1,7 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import type { AvatarConfig } from '../shared/avatar'
 import type { ChatEvent } from '../shared/chat'
-import { IPC, type PanelNavigation, type PanelState, type ToolboxApi } from '../shared/ipc'
+import { IPC, type PanelNavigation, type PanelState, type TeamEvent, type ToolboxApi } from '../shared/ipc'
 
 function subscribe<T>(channel: string, listener: (value: T) => void): () => void {
   const handler = (_event: Electron.IpcRendererEvent, value: T): void => listener(value)
@@ -83,6 +83,18 @@ const api: ToolboxApi = {
     list: () => ipcRenderer.invoke(IPC.connectorsList),
     save: (id, input) => ipcRenderer.invoke(IPC.connectorsSave, id, input),
     remove: (id) => ipcRenderer.invoke(IPC.connectorsRemove, id)
+  },
+  team: {
+    list: () => ipcRenderer.invoke(IPC.teamsList),
+    save: (id, input) => ipcRenderer.invoke(IPC.teamsSave, id, input),
+    remove: (id) => ipcRenderer.invoke(IPC.teamsRemove, id),
+    conversations: (teamId) => ipcRenderer.invoke(IPC.teamConversationsList, teamId),
+    conversation: (teamId, id) => ipcRenderer.invoke(IPC.teamConversationsGet, teamId, id),
+    removeConversation: (teamId, id) => ipcRenderer.invoke(IPC.teamConversationsDelete, teamId, id),
+    run: (teamId, conversationId, text) => ipcRenderer.send(IPC.teamRun, teamId, conversationId, text),
+    stop: (conversationId) => ipcRenderer.send(IPC.teamStop, conversationId),
+    onEvent: (listener) => subscribe<TeamEvent>(IPC.teamEvent, listener),
+    continueWithChief: (teamId, conversationId) => ipcRenderer.invoke(IPC.teamContinueWithChief, teamId, conversationId)
   },
   tasks: {
     list: (agentId) => ipcRenderer.invoke(IPC.tasksList, agentId),
