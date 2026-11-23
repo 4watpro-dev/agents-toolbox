@@ -1585,3 +1585,32 @@ textarea.input {
   text-decoration: underline;
   cursor: pointer;
 }
+
+/* Dossier de documents d'un agent */
+.knowledge-folder {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border: 1px solid var(--accent-line);
+  border-radius: 9px;
+  background: var(--accent-soft);
+}
+
+.knowledge-folder svg {
+  flex: none;
+  color: var(--accent);
+}
+
+.knowledge-path {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.knowledge-choose {
+  align-self: flex-start;
+}

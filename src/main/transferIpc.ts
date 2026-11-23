@@ -2,10 +2,11 @@ import { readFile, stat, writeFile } from 'node:fs/promises'
 import { dialog, ipcMain } from 'electron'
 import { z } from 'zod'
 import { parseAgentsFile, serializeAgents, uniqueName } from '../shared/agentTransfer'
-import { IPC, type TransferResult } from '../shared/ipc'
+import { IPC, type Result, type TransferResult } from '../shared/ipc'
 import { conversationMarkdown, exportFileName } from '../shared/history'
 import { listAgents, saveAgent } from './store/agents'
 import { getConversation } from './store/conversations'
+import { resolveKnowledgeFolder } from './knowledge'
 import { withPanelHidden } from './windows'
 
 const MAX_FILE_BYTES = 5 * 1024 * 1024
@@ -69,7 +70,20 @@ async function exportConversation(agentId: string, id: string): Promise<Transfer
   return { ok: true, value: { canceled: false, message: 'Conversation exportée en Markdown.' } }
 }
 
+async function chooseKnowledgeFolder(): Promise<Result<{ path: string; name: string } | null>> {
+  const { canceled, filePaths } = await dialog.showOpenDialog({
+    title: 'Dossier de documents',
+    message: "Choisis le dossier que l'agent pourra lire. Il ne pourra rien y modifier.",
+    buttonLabel: 'Choisir ce dossier',
+    properties: ['openDirectory']
+  })
+  if (canceled || !filePaths[0]) return { ok: true, value: null }
+  const folder = resolveKnowledgeFolder(filePaths[0])
+  return folder.ok ? { ok: true, value: { path: folder.path, name: folder.name } } : { ok: false, message: folder.message }
+}
+
 export function registerTransferIpc(): void {
+  ipcMain.handle(IPC.knowledgeChoose, () => withPanelHidden(chooseKnowledgeFolder))
   ipcMain.handle(IPC.conversationsExport, (_event, agentId: unknown, id: unknown) =>
     withPanelHidden(() => exportConversation(z.uuid().parse(agentId), z.uuid().parse(id)))
   )

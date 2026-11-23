@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process'
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { createServer, type Server } from 'node:net'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -16,6 +16,7 @@ interface Policy {
   webFetch: boolean
   allowedDomains: string[]
   bridge?: { socket: string; runId: string } | null
+  knowledge?: string | null
 }
 
 const ALL: Policy = { webSearch: true, webFetch: true, allowedDomains: ['brevo.com'] }
@@ -147,7 +148,7 @@ describe('contrôle des connecteurs', () => {
 
 describe('toolGuardArgs', () => {
   it("n'expose que les outils activés et protège les chemins avec espaces", () => {
-    const args = toolGuardArgs({ webSearch: false, webFetch: true, allowedDomains: [], connectors: [] }, null, null, '/App Support/Electron', "/l'app/guard.cjs")
+    const args = toolGuardArgs({ webSearch: false, webFetch: true, allowedDomains: [], connectors: [], knowledgeFolder: null }, null, null, '/App Support/Electron', "/l'app/guard.cjs")
     expect(args.tools).toBe('WebFetch')
     const command = JSON.parse(args.settings).hooks.PreToolUse[0].hooks[0].command as string
     expect(command).toContain("ELECTRON_RUN_AS_NODE=1 '/App Support/Electron' '/l'\\''app/guard.cjs'")
@@ -171,5 +172,55 @@ describe('connectorConfig', () => {
       brevo: { type: 'http', url: 'https://mcp.brevo.com/v1/brevo/mcp', headers: { Authorization: 'Bearer ${AT_MCP_TOKEN_0}' } },
       'brevo-2': { type: 'http', url: 'https://autre.example/mcp' }
     })
+  })
+})
+
+describe('contrôle du dossier de documents', () => {
+  // Chemins réels : sur macOS, /var/folders est un lien vers /private/var/folders.
+  const base = realpathSync(directory)
+  const docs = join(base, 'docs')
+  const secret = join(base, 'secret.txt')
+  mkdirSync(join(docs, 'sous-dossier'), { recursive: true })
+  writeFileSync(join(docs, 'brief.md'), '# Brief')
+  writeFileSync(join(docs, 'sous-dossier', 'note.txt'), 'note')
+  writeFileSync(secret, 'secret')
+  symlinkSync(secret, join(docs, 'raccourci.txt'))
+  const policy: Policy = { webSearch: false, webFetch: false, allowedDomains: [], knowledge: docs }
+  const decision = async (tool: string, input: unknown) => (await run(policy, tool, input)).output
+
+  it('laisse lire les fichiers du dossier, sous-dossiers compris', async () => {
+    expect((await decision('Read', { file_path: join(docs, 'brief.md') })).permissionDecision).toBe('allow')
+    expect((await decision('Read', { file_path: join(docs, 'sous-dossier', 'note.txt') })).permissionDecision).toBe('allow')
+  })
+
+  it('refuse tout fichier hors du dossier, même par un lien ou un « .. »', async () => {
+    expect((await decision('Read', { file_path: secret })).permissionDecision).toBe('deny')
+    expect((await decision('Read', { file_path: join(docs, '..', 'secret.txt') })).permissionDecision).toBe('deny')
+    expect((await decision('Read', { file_path: join(docs, 'raccourci.txt') })).permissionDecision).toBe('deny')
+    expect((await decision('Read', { file_path: '/etc/hosts' })).permissionDecision).toBe('deny')
+    expect((await decision('Read', { file_path: join(docs, 'absent.md') })).permissionDecision).toBe('deny')
+  })
+
+  it('cherche dans le dossier par défaut, jamais ailleurs', async () => {
+    const glob = await decision('Glob', { pattern: '**/*.md' })
+    expect(glob.permissionDecision).toBe('allow')
+    expect(glob.updatedInput).toEqual({ pattern: '**/*.md', path: docs })
+    expect((await decision('Grep', { pattern: 'Brief', path: join(docs, 'sous-dossier') })).permissionDecision).toBe('allow')
+    expect((await decision('Grep', { pattern: 'x', path: base })).permissionDecision).toBe('deny')
+    expect((await decision('Glob', { pattern: '../**' })).permissionDecision).toBe('deny')
+    expect((await decision('Glob', { pattern: '/etc/*' })).permissionDecision).toBe('deny')
+    expect((await decision('Grep', { pattern: 'x', glob: '../*' })).permissionDecision).toBe('deny')
+  })
+
+  it("refuse l'écriture et le terminal, même avec un dossier", async () => {
+    for (const tool of ['Write', 'Edit', 'Bash']) {
+      expect((await decision(tool, { file_path: join(docs, 'brief.md'), command: 'ls' })).permissionDecision).toBe('deny')
+    }
+  })
+
+  it('donne les outils de lecture et ouvre le dossier', () => {
+    const args = toolGuardArgs({ webSearch: false, webFetch: false, allowedDomains: [], connectors: [], knowledgeFolder: docs }, null, null, '/bin/node', '/tmp/g.cjs', docs)
+    expect(args.tools).toBe('Read,Glob,Grep')
+    expect(args.addDir).toBe(docs)
   })
 })

@@ -15,12 +15,17 @@ export const AgentToolsSchema = z.object({
   /** Vide : aucun filtre. Un domaine couvre aussi ses sous-domaines. */
   allowedDomains: z.array(z.string().regex(DOMAIN)).max(MAX_ALLOWED_DOMAINS),
   /** Identifiants des connecteurs MCP configurés dans les réglages. */
-  connectors: z.array(z.uuid()).max(20).default([])
+  connectors: z.array(z.uuid()).max(20).default([]),
+  /** Dossier de documents que l'agent peut lire (chemin absolu). Propre à ce Mac : jamais exporté. */
+  knowledgeFolder: z.string().min(1).max(1024).nullable().default(null)
 })
 
 export type AgentTools = z.infer<typeof AgentToolsSchema>
 
-export const NO_TOOLS: AgentTools = { webSearch: false, webFetch: false, allowedDomains: [], connectors: [] }
+export const NO_TOOLS: AgentTools = { webSearch: false, webFetch: false, allowedDomains: [], connectors: [], knowledgeFolder: null }
+
+/** Outils de Claude Code qui donnent accès au dossier de documents, en lecture seule. */
+export const KNOWLEDGE_TOOLS = ['Read', 'Glob', 'Grep'] as const
 
 export function isValidDomain(domain: string): boolean {
   return DOMAIN.test(domain)
@@ -54,6 +59,8 @@ export type ToolActivity =
   | { kind: 'search'; query: string }
   | { kind: 'fetch'; host: string }
   | { kind: 'connector'; connector: string; tool: string }
+  | { kind: 'read'; file: string }
+  | { kind: 'browse' }
 
 function hostOf(url: string): string | null {
   try {
@@ -74,6 +81,10 @@ export function describeToolUse(name: string, input: unknown, connectorLabels: R
   if ((name === 'web_search' || name === 'WebSearch') && typeof fields['query'] === 'string') {
     return { kind: 'search', query: fields['query'] }
   }
+  if (name === 'Read' && typeof fields['file_path'] === 'string') {
+    return { kind: 'read', file: fields['file_path'].split('/').pop() || fields['file_path'] }
+  }
+  if (name === 'Glob' || name === 'Grep') return { kind: 'browse' }
   if ((name === 'web_fetch' || name === 'WebFetch') && typeof fields['url'] === 'string') {
     const host = hostOf(fields['url'])
     return host ? { kind: 'fetch', host } : null
@@ -87,6 +98,8 @@ const MAX_QUERY_LENGTH = 60
 export function activityLabel(agentName: string, activity: ToolActivity): string {
   if (activity.kind === 'fetch') return `${agentName} consulte ${activity.host}…`
   if (activity.kind === 'connector') return `${agentName} utilise ${activity.connector} (${activity.tool})…`
+  if (activity.kind === 'read') return `${agentName} lit « ${activity.file} »…`
+  if (activity.kind === 'browse') return `${agentName} parcourt ses documents…`
   const { query } = activity
   const short = query.length > MAX_QUERY_LENGTH ? `${query.slice(0, MAX_QUERY_LENGTH).trimEnd()}…` : query
   return `${agentName} cherche « ${short} »…`

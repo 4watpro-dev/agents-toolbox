@@ -130,9 +130,17 @@ export function sendViaClaudeCode(
         onResolved: (id, outcome) => emit({ sessionId, type: 'confirmed', id, outcome })
       })
     : null
-  const guarded = usesWebTools(agent.tools) || toolRun !== null
+  const knowledge = context.knowledge ?? null
+  const guarded = usesWebTools(agent.tools) || toolRun !== null || knowledge !== null
   const web = guarded
-    ? toolGuardArgs(agent.tools, mcpConfig, toolRun && { socket: toolRun.socket, runId: toolRun.runId }, process.execPath, writeToolGuard())
+    ? toolGuardArgs(
+        agent.tools,
+        mcpConfig,
+        toolRun && { socket: toolRun.socket, runId: toolRun.runId },
+        process.execPath,
+        writeToolGuard(),
+        knowledge
+      )
     : null
   const args = chatArgs(context.systemPrompt, agent.model, agent.effort, session.resumeId, web)
 

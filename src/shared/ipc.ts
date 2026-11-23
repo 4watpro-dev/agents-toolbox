@@ -71,6 +71,7 @@ export const IPC = {
   subscriptionStatus: 'subscription:status',
   subscriptionLogin: 'subscription:login',
   generateAgent: 'generate:agent',
+  knowledgeChoose: 'knowledge:choose',
   copyText: 'clipboard:copy'
 } as const
 
@@ -239,5 +240,7 @@ export interface ToolboxApi {
   connectors: ConnectorsApi
   tasks: TasksApi
   generateAgent(description: string): Promise<Result<AgentDraft>>
+  /** Choisit un dossier de documents. `null` : choix annulé. */
+  chooseKnowledgeFolder(): Promise<Result<{ path: string; name: string } | null>>
   copyText(text: string): void
 }

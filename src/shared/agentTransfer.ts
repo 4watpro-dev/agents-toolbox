@@ -8,7 +8,11 @@ const MAX_NAME_LENGTH = 40
 /** Seule la fiche des agents est exportée : ni leur mémoire, ni leurs conversations, qui sont personnelles. */
 export function serializeAgents(agents: Agent[]): string {
   return JSON.stringify(
-    { format: FORMAT, version: VERSION, agents: agents.map((agent) => ({ ...toDraft(agent), isFavorite: false })) },
+    { format: FORMAT, version: VERSION, agents: agents.map((agent) => {
+      const draft = toDraft(agent)
+      // Le dossier de documents est un chemin de ce Mac : il n'a pas de sens ailleurs.
+      return { ...draft, isFavorite: false, tools: { ...draft.tools, knowledgeFolder: null } }
+    }) },
     null,
     2
   )

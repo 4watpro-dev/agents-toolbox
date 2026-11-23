@@ -92,6 +92,7 @@ const api: ToolboxApi = {
     onChanged: (listener) => subscribe<void>(IPC.tasksChanged, listener)
   },
   generateAgent: (description) => ipcRenderer.invoke(IPC.generateAgent, description),
+  chooseKnowledgeFolder: () => ipcRenderer.invoke(IPC.knowledgeChoose),
   copyText: (text) => ipcRenderer.send(IPC.copyText, text)
 }
 

@@ -3,6 +3,7 @@ import { EFFORTS, MODELS, type AgentDraft } from '../../../shared/agent'
 import type { Connector } from '../../../shared/connectors'
 import { composePrompt } from '../../../shared/systemPrompt'
 import { parseDomains, usesWebTools } from '../../../shared/tools'
+import { FolderIcon } from '../icons'
 import { Field, Options, type StepProps } from './fields'
 
 const EFFORT_IDS = EFFORTS.map((effort) => effort.id)
@@ -17,6 +18,14 @@ export function StepSkills({ draft, update }: StepProps): React.JSX.Element {
   const { tools } = draft
   const [domainsText, setDomainsText] = useState(tools.allowedDomains.join('\n'))
   const [connectors, setConnectors] = useState<Connector[]>([])
+  const [folderError, setFolderError] = useState<string | null>(null)
+
+  async function chooseFolder(): Promise<void> {
+    setFolderError(null)
+    const result = await window.toolbox.chooseKnowledgeFolder()
+    if (!result.ok) setFolderError(result.message)
+    else if (result.value) update({ tools: { ...tools, knowledgeFolder: result.value.path } })
+  }
 
   useEffect(() => {
     void window.toolbox.connectors.list().then(setConnectors)
@@ -104,6 +113,34 @@ export function StepSkills({ draft, update }: StepProps): React.JSX.Element {
             </p>
           </>
         )}
+        <span className="field-label tools-group">Dossier de documents</span>
+        {tools.knowledgeFolder ? (
+          <div className="knowledge-folder">
+            <FolderIcon size={18} />
+            <span className="knowledge-path" title={tools.knowledgeFolder}>
+              {tools.knowledgeFolder.replace(/^\/Users\/[^/]+/, '~')}
+            </span>
+            <button type="button" className="button" onClick={() => void chooseFolder()}>
+              Changer
+            </button>
+            <button type="button" className="button" onClick={() => update({ tools: { ...tools, knowledgeFolder: null } })}>
+              Retirer
+            </button>
+          </div>
+        ) : (
+          <button type="button" className="button knowledge-choose" onClick={() => void chooseFolder()}>
+            Choisir un dossier…
+          </button>
+        )}
+        {folderError && (
+          <p className="form-error" role="alert">
+            {folderError}
+          </p>
+        )}
+        <p className="field-hint">
+          L'agent cherche et lit les fichiers utiles de ce dossier (texte, PDF, images), sans jamais rien y modifier ni lire ailleurs.
+          Avec ton abonnement uniquement. Le chemin n'est pas inclus quand tu exportes l'agent.
+        </p>
         <span className="field-label tools-group">Connecteurs MCP</span>
         {connectors.length === 0 ? (
           <p className="field-hint">Aucun connecteur : ajoutes-en un dans les réglages (⚙), puis reviens ici.</p>

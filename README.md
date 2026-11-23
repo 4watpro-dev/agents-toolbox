@@ -57,6 +57,7 @@ Le mode abonnement est prévu pour un usage personnel, sur ton propre Mac : Anth
 | Retrouver une conversation | Taper un mot dans la recherche de la galerie : les conversations qui le contiennent s'affichent sous les agents |
 | Épingler ou exporter une conversation | **☰**, puis l'épingle (elle reste en tête) ou la flèche (fichier Markdown) |
 | Programmer une tâche | **☰**, section **Tâches programmées** : un nom, une consigne, des jours et une heure. Le résultat arrive dans une conversation, avec une notification et une pastille sur l'icône |
+| Donner des documents à un agent | **✎** sur l'agent, étape des compétences, **Dossier de documents** : l'agent y cherche et lit les fichiers utiles (texte, PDF, images), en lecture seule. Avec ton abonnement uniquement |
 | Sauvegarder ou partager des agents | **⚙** pour tous, **⋯** sur une carte pour un seul |
 | Lancer au démarrage | **⚙**, ou le menu de l'icône dans la barre de menus |
 

@@ -47,12 +47,13 @@ export function chatArgs(
   model: string,
   effort: string,
   resumeId: string | null,
-  web: { tools: string; settings: string; mcpConfig: string | null } | null = null
+  web: { tools: string; settings: string; mcpConfig: string | null; addDir?: string | null } | null = null
 ): string[] {
   return [
     ...isolationArgs(systemPrompt, model, effort, web?.tools),
     ...(web ? ['--settings', web.settings] : []),
     ...(web?.mcpConfig ? ['--mcp-config', web.mcpConfig] : []),
+    ...(web?.addDir ? ['--add-dir', web.addDir] : []),
     '--output-format',
     'stream-json',
     // Le message arrive en JSON sur l'entrée standard : il peut porter des images et des PDF.
@@ -89,6 +90,8 @@ export interface TurnContext {
   resumeId: string | null
   /** Connecteurs de l'agent, jetons compris. Seul le mode abonnement s'en sert. */
   connectors: ResolvedConnector[]
+  /** Chemin réel du dossier de documents, vérifié. Seul le mode abonnement s'en sert. */
+  knowledge?: string | null
 }
 
 /** Claude Code efface ses anciennes sessions : la conversation doit pouvoir leur survivre. */

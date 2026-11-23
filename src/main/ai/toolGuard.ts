@@ -1,5 +1,5 @@
 import { connectorKey } from '../../shared/connectors'
-import type { AgentTools } from '../../shared/tools'
+import { KNOWLEDGE_TOOLS, type AgentTools } from '../../shared/tools'
 
 /**
  * Contrôle exécuté par Claude Code avant chaque appel d'outil, en mode abonnement.
@@ -11,6 +11,7 @@ import type { AgentTools } from '../../shared/tools'
 export const TOOL_GUARD_SCRIPT = `'use strict'
 const fs = require('node:fs')
 const net = require('node:net')
+const path = require('node:path')
 
 function decide(permissionDecision, permissionDecisionReason, updatedInput) {
   const hookSpecificOutput = { hookEventName: 'PreToolUse', permissionDecision, permissionDecisionReason }
@@ -56,6 +57,32 @@ try {
 
   if (call.tool_name.startsWith('mcp__') && policy.bridge) {
     askApp(policy.bridge, call.tool_name, input)
+  } else if (policy.knowledge && ['Read', 'Glob', 'Grep'].includes(call.tool_name)) {
+    // Lecture seule, et seulement dans le dossier de documents : chemins réels comparés,
+    // pour qu'un lien symbolique ou un « .. » ne mène pas ailleurs.
+    const root = policy.knowledge
+    const inside = (target) => {
+      try {
+        const real = fs.realpathSync(path.resolve(root, String(target)))
+        return real === root || real.startsWith(root + path.sep)
+      } catch {
+        return false
+      }
+    }
+    const escapes = (pattern) =>
+      typeof pattern === 'string' && (path.isAbsolute(pattern) || pattern.startsWith('~') || pattern.split(/[\\/]/).includes('..'))
+    const outside = "Ce fichier est hors du dossier de documents de l'agent : accès refusé."
+    if (call.tool_name === 'Read') {
+      if (inside(input.file_path || '')) decide('allow', 'Fichier du dossier de documents.')
+      else decide('deny', outside)
+    } else if (input.path !== undefined && !inside(input.path)) {
+      decide('deny', outside)
+    } else if (escapes(input.pattern && call.tool_name === 'Glob' ? input.pattern : undefined) || escapes(input.glob)) {
+      decide('deny', outside)
+    } else {
+      // Sans chemin, la recherche porte sur le dossier de documents, pas sur le dossier de travail.
+      decide('allow', 'Recherche dans le dossier de documents.', input.path === undefined ? { ...input, path: root } : undefined)
+    }
   } else if (call.tool_name === 'WebSearch' && policy.webSearch) {
     if (domains.length === 0) {
       decide('allow', 'Recherche sans filtre.')
@@ -90,6 +117,8 @@ export interface ToolArgs {
   tools: string
   settings: string
   mcpConfig: string | null
+  /** Dossier de documents à ouvrir en lecture (`--add-dir`). */
+  addDir: string | null
 }
 
 export interface ResolvedConnector {
@@ -130,15 +159,22 @@ export function toolGuardArgs(
   mcpConfig: string | null,
   bridge: { socket: string; runId: string } | null,
   runtimePath: string,
-  scriptPath: string
+  scriptPath: string,
+  /** Chemin réel du dossier de documents, déjà vérifié. */
+  knowledge: string | null = null
 ): ToolArgs {
-  const names = [...(tools.webSearch ? ['WebSearch'] : []), ...(tools.webFetch ? ['WebFetch'] : [])]
+  const names = [
+    ...(tools.webSearch ? ['WebSearch'] : []),
+    ...(tools.webFetch ? ['WebFetch'] : []),
+    ...(knowledge ? KNOWLEDGE_TOOLS : [])
+  ]
   const { webSearch, webFetch, allowedDomains } = tools
-  const policy = Buffer.from(JSON.stringify({ webSearch, webFetch, allowedDomains, bridge })).toString('base64')
+  const policy = Buffer.from(JSON.stringify({ webSearch, webFetch, allowedDomains, bridge, knowledge })).toString('base64')
   const command = `ELECTRON_RUN_AS_NODE=1 ${shellQuote(runtimePath)} ${shellQuote(scriptPath)} ${shellQuote(policy)}`
   return {
     tools: names.join(','),
     mcpConfig,
+    addDir: knowledge,
     settings: JSON.stringify({
       hooks: { PreToolUse: [{ matcher: '*', hooks: [{ type: 'command', command, timeout: GUARD_TIMEOUT_SECONDS }] }] }
     })

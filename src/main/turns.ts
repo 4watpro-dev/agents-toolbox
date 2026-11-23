@@ -5,6 +5,7 @@ import { buildSystemPrompt } from '../shared/systemPrompt'
 import type { PreparedAttachment } from './ai/attachments'
 import { resetSession, sendMessage } from './ai/chat'
 import { claudeResumeId, resetClaudeCodeSession, sendViaClaudeCode } from './ai/claudeCode'
+import { resolveKnowledgeFolder } from './knowledge'
 import { resolveConnectors } from './store/connectors'
 import { appendTurns, getConversation, getFacts, rememberFacts, setClaudeSession } from './store/conversations'
 import { getSettings } from './store/settings'
@@ -48,11 +49,19 @@ export function runTurn(request: TurnRequest, deliver: (event: ChatEvent) => voi
   const wanted = resolveConnectors(draft.tools.connectors)
   // L'API exécuterait les actions de ses connecteurs sans passer par une confirmation.
   const connectors = usesSubscription() && !request.unattended ? wanted : []
+  // Dossier de documents : lu par les outils de Claude Code, donc en mode abonnement seulement.
+  const folder = draft.tools.knowledgeFolder ? resolveKnowledgeFolder(draft.tools.knowledgeFolder) : null
+  const knowledge = folder?.ok && usesSubscription() ? folder : null
   const context = {
-    systemPrompt: buildSystemPrompt(draft, facts, { remember: agentId !== null, connectors: connectors.map((c) => c.name) }),
+    systemPrompt: buildSystemPrompt(draft, facts, {
+      remember: agentId !== null,
+      connectors: connectors.map((c) => c.name),
+      knowledge: knowledge?.name ?? null
+    }),
     turns: conversation?.messages ?? [],
     resumeId: conversation?.claudeSessionId ?? null,
-    connectors
+    connectors,
+    knowledge: knowledge?.path ?? null
   }
 
   const turn = { agentId, visibleText: '', afterTool: false }
@@ -99,6 +108,10 @@ export function runTurn(request: TurnRequest, deliver: (event: ChatEvent) => voi
         ? "Les connecteurs ne servent pas aux tâches programmées : leurs actions demandent ta confirmation."
         : "Les connecteurs sont désactivés en mode clé API, faute de pouvoir y demander ta confirmation. Repasse sur ton abonnement pour t'en servir."
     })
+  }
+  if (folder && !folder.ok) emit({ sessionId, type: 'notice', text: `${folder.message} L'agent répond sans ses documents.` })
+  else if (folder && !usesSubscription()) {
+    emit({ sessionId, type: 'notice', text: "Le dossier de documents ne fonctionne qu'avec ton abonnement : l'agent répond sans ses documents en mode clé API." })
   }
   const message = { text, attachments }
   if (usesSubscription()) sendViaClaudeCode(sessionId, draft, message, emit, context)
