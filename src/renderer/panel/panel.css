@@ -161,8 +161,12 @@ body,
   filter: brightness(1.08);
 }
 
+/* Pleine largeur dans le panneau compact, mais bornée : en grand, le bouton garde une taille de bouton. */
 .button-wide {
+  display: block;
   width: 100%;
+  max-width: 340px;
+  margin-inline: auto;
 }
 
 .button-back {
@@ -388,8 +392,9 @@ textarea.input {
 .gallery-header {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 12px 12px 10px;
+  /* Les filtres respirent sous la recherche. */
+  gap: 14px;
+  padding: 12px 12px 12px;
   border-bottom: 1px solid var(--border);
 }
 
