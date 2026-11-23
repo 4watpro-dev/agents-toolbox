@@ -25,7 +25,14 @@ export function Panel(): React.JSX.Element {
     setView((current) => (current.name === 'settings' ? current : { name: 'settings', returnTo: current }))
 
   useEffect(() => window.toolbox.panel.onState(setState), [])
-  useEffect(() => window.toolbox.panel.onNavigate(openSettings), [])
+  useEffect(
+    () =>
+      window.toolbox.panel.onNavigate((target) => {
+        if (target === 'settings') openSettings()
+        else setView({ name: 'agent', agentId: target.agentId, conversationId: target.conversationId })
+      }),
+    []
+  )
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {

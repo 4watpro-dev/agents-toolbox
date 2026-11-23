@@ -34,10 +34,16 @@ let panelOpen = false
 let lastBlurCloseAt = 0
 let dialogOpen = false
 let activateTimer: NodeJS.Timeout | null = null
+/** Vrai quand une autre fenêtre de l'app (la palette) vient de faire passer l'app au premier plan. */
+let activationOwnedElsewhere: () => boolean = () => false
+
+export function setActivationOwner(isOwned: () => boolean): void {
+  activationOwnedElsewhere = isOwned
+}
 /** Délai avant d'ouvrir le panneau quand l'app passe au premier plan (Cmd+Tab, Dock). */
 const ACTIVATE_DELAY_MS = 150
 
-const securePreferences = {
+export const securePreferences = {
   preload: join(__dirname, '../preload/index.js'),
   contextIsolation: true,
   nodeIntegration: false,
@@ -46,7 +52,7 @@ const securePreferences = {
   backgroundThrottling: false
 }
 
-function loadPage(window: BrowserWindow, page: 'widget' | 'panel'): void {
+export function loadPage(window: BrowserWindow, page: 'widget' | 'panel' | 'palette'): void {
   const devServer = process.env['ELECTRON_RENDERER_URL']
   if (devServer) {
     void window.loadURL(`${devServer}/${page}.html`)
@@ -61,7 +67,7 @@ function openInBrowser(url: string): void {
 }
 
 /** Un lien dans une réponse s'ouvre dans le navigateur : l'app ne quitte jamais ses pages. */
-function keepNavigationInApp(window: BrowserWindow): void {
+export function keepNavigationInApp(window: BrowserWindow): void {
   const { webContents } = window
   webContents.setWindowOpenHandler(({ url }) => {
     openInBrowser(url)
@@ -73,7 +79,7 @@ function keepNavigationInApp(window: BrowserWindow): void {
   })
 }
 
-function floatAboveEverything(window: BrowserWindow): void {
+export function floatAboveEverything(window: BrowserWindow): void {
   window.setAlwaysOnTop(true, 'screen-saver')
   window.setVisibleOnAllWorkspaces(true, {
     visibleOnFullScreen: true,
@@ -192,7 +198,7 @@ export function openPanelOnActivate(): void {
   if (activateTimer) clearTimeout(activateTimer)
   activateTimer = setTimeout(() => {
     activateTimer = null
-    if (panelOpen || dialogOpen || dragTimer) return
+    if (panelOpen || dialogOpen || dragTimer || activationOwnedElsewhere()) return
     if (Date.now() - lastBlurCloseAt < REOPEN_GUARD_MS) return
     openPanel()
   }, ACTIVATE_DELAY_MS)
@@ -200,6 +206,12 @@ export function openPanelOnActivate(): void {
 
 export function openSettingsInPanel(): void {
   panel.webContents.send(IPC.panelNavigate, 'settings')
+  openPanel()
+}
+
+/** Ouvre le panneau sur une conversation précise (reprise depuis la palette). */
+export function openConversationInPanel(agentId: string, conversationId: string): void {
+  panel.webContents.send(IPC.panelNavigate, { agentId, conversationId })
   openPanel()
 }
 

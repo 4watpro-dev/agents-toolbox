@@ -8,6 +8,7 @@ import { registerTransferIpc } from './transferIpc'
 import { startShortcut } from './shortcut'
 import { createTray } from './tray'
 import { migrateLoginItem } from './loginItem'
+import { createPalette } from './palette'
 import { createWindows, openPanel, openPanelOnActivate } from './windows'
 
 if (!app.requestSingleInstanceLock()) {
@@ -33,6 +34,7 @@ if (!app.requestSingleInstanceLock()) {
     registerSettingsIpc()
     registerTransferIpc()
     createWindows()
+    createPalette()
     createTray()
     startShortcut()
   })

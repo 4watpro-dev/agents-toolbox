@@ -83,6 +83,13 @@ export function resetChatSession(sessionId: string): void {
   notify()
 }
 
+/** Oublie l'affichage d'une session sans toucher à la conversation côté main (reprise ailleurs). */
+export function forgetChatSession(sessionId: string): void {
+  sessions.delete(sessionId)
+  lastAttachments.delete(sessionId)
+  notify()
+}
+
 /** Retire un fait que l'agent vient de retenir. */
 export async function undoRemembered(sessionId: string, agentId: string, fact: string): Promise<void> {
   const facts = await window.toolbox.memory.get(agentId)

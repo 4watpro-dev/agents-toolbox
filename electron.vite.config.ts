@@ -39,7 +39,8 @@ export default defineConfig({
       rollupOptions: {
         input: {
           widget: resolve('src/renderer/widget.html'),
-          panel: resolve('src/renderer/panel.html')
+          panel: resolve('src/renderer/panel.html'),
+          palette: resolve('src/renderer/palette.html')
         }
       }
     }

@@ -2,12 +2,12 @@ import { globalShortcut } from 'electron'
 import { formatAccelerator } from '../shared/shortcut'
 import type { Result } from '../shared/ipc'
 import { getSettings, updateSettings } from './store/settings'
-import { togglePanel } from './windows'
+import { togglePalette } from './palette'
 
 function register(accelerator: string): boolean {
   globalShortcut.unregisterAll()
   try {
-    return globalShortcut.register(accelerator, () => togglePanel())
+    return globalShortcut.register(accelerator, () => togglePalette())
   } catch {
     return false
   }

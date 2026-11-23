@@ -1,7 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import type { AvatarConfig } from '../shared/avatar'
 import type { ChatEvent } from '../shared/chat'
-import { IPC, type PanelState, type ToolboxApi } from '../shared/ipc'
+import { IPC, type PanelNavigation, type PanelState, type ToolboxApi } from '../shared/ipc'
 
 function subscribe<T>(channel: string, listener: (value: T) => void): () => void {
   const handler = (_event: Electron.IpcRendererEvent, value: T): void => listener(value)
@@ -21,7 +21,13 @@ const api: ToolboxApi = {
     onState: (listener) => subscribe<PanelState>(IPC.panelState, listener),
     painted: (requestedAt) => ipcRenderer.send(IPC.panelPainted, requestedAt),
     close: () => ipcRenderer.send(IPC.panelClose),
-    onNavigate: (listener) => subscribe<'settings'>(IPC.panelNavigate, listener)
+    onNavigate: (listener) => subscribe<PanelNavigation>(IPC.panelNavigate, listener)
+  },
+  palette: {
+    onState: (listener) => subscribe<boolean>(IPC.paletteState, listener),
+    resize: (height) => ipcRenderer.send(IPC.paletteResize, height),
+    close: () => ipcRenderer.send(IPC.paletteClose),
+    continueInPanel: (agentId, conversationId) => ipcRenderer.send(IPC.paletteContinue, agentId, conversationId)
   },
   conversations: {
     list: (agentId) => ipcRenderer.invoke(IPC.conversationsList, agentId),
@@ -46,6 +52,7 @@ const api: ToolboxApi = {
     remove: (id) => ipcRenderer.invoke(IPC.agentsRemove, id),
     setFavorite: (id, isFavorite) => ipcRenderer.invoke(IPC.agentsSetFavorite, id, isFavorite),
     markUsed: (id) => ipcRenderer.invoke(IPC.agentsMarkUsed, id),
+    lastUsed: () => ipcRenderer.invoke(IPC.agentsLastUsed),
     exportToFile: (id) => ipcRenderer.invoke(IPC.agentsExport, id),
     importFromFile: () => ipcRenderer.invoke(IPC.agentsImport)
   },

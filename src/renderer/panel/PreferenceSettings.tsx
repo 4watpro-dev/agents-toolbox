@@ -71,7 +71,8 @@ export function PreferenceSettings({ panelOpen }: { panelOpen: boolean }): React
   return (
     <>
       <section className="settings-section">
-        <h2>Raccourci global</h2>
+        <h2>Palette de commandes</h2>
+        <p className="field-hint">Ce raccourci ouvre la palette depuis n'importe quelle app. Le panneau s'ouvre par l'icône flottante.</p>
         <div className="settings-confirm">
           <span className="shortcut-value">
             {recording ? 'Appuie sur ta combinaison… (Échap pour annuler)' : shortcut ? formatAccelerator(shortcut.accelerator) : '…'}

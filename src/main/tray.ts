@@ -1,6 +1,7 @@
 import { join } from 'node:path'
 import { app, dialog, Menu, nativeImage, Tray } from 'electron'
 import { isLoginItemEnabled, setLoginItemEnabled } from './loginItem'
+import { openPalette } from './palette'
 import { openPanel, openSettingsInPanel } from './windows'
 
 // Gardé au niveau du module : sinon le ramasse-miettes fait disparaître l'icône.
@@ -17,6 +18,7 @@ export function refreshTrayMenu(): void {
   tray?.setContextMenu(
     Menu.buildFromTemplate([
       { label: 'Ouvrir', click: () => openPanel() },
+      { label: 'Palette de commandes', click: () => openPalette() },
       { label: 'Réglages', click: () => openSettingsInPanel() },
       { label: 'Lancer au démarrage', type: 'checkbox', checked: isLoginItemEnabled(), click: toggleLoginItem },
       { type: 'separator' },

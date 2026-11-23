@@ -21,6 +21,11 @@ export const IPC = {
   panelPainted: 'panel:painted',
   panelClose: 'panel:close',
   panelNavigate: 'panel:navigate',
+  paletteState: 'palette:state',
+  paletteResize: 'palette:resize',
+  paletteClose: 'palette:close',
+  paletteContinue: 'palette:continue',
+  agentsLastUsed: 'agents:last-used',
   conversationsList: 'conversations:list',
   conversationsGet: 'conversations:get',
   conversationsDelete: 'conversations:delete',
@@ -94,11 +99,24 @@ export interface WidgetApi {
   onAvatar(listener: (avatar: AvatarConfig) => void): () => void
 }
 
+/** Où le panneau doit aller : les réglages, ou une conversation précise. */
+export type PanelNavigation = 'settings' | { agentId: string; conversationId: string }
+
 export interface PanelApi {
   onState(listener: (state: PanelState) => void): () => void
   painted(requestedAt: number): void
   close(): void
-  onNavigate(listener: (target: 'settings') => void): () => void
+  onNavigate(listener: (target: PanelNavigation) => void): () => void
+}
+
+export interface PaletteApi {
+  /** `true` à chaque ouverture, `false` à la fermeture. */
+  onState(listener: (open: boolean) => void): () => void
+  /** Hauteur voulue par le contenu ; le main la borne à l'écran. */
+  resize(height: number): void
+  close(): void
+  /** Ferme la palette et ouvre la conversation dans le panneau. */
+  continueInPanel(agentId: string, conversationId: string): void
 }
 
 export interface ConversationsApi {
@@ -134,6 +152,8 @@ export interface AgentsApi {
   remove(id: string): Promise<void>
   setFavorite(id: string, isFavorite: boolean): Promise<Agent>
   markUsed(id: string): Promise<void>
+  /** Dernier agent utilisé, ou `null`. */
+  lastUsed(): Promise<string | null>
   /** `id` nul : exporte tous les agents. */
   exportToFile(id: string | null): Promise<TransferResult>
   importFromFile(): Promise<TransferResult>
@@ -174,6 +194,7 @@ export interface ConnectionApi {
 export interface ToolboxApi {
   widget: WidgetApi
   panel: PanelApi
+  palette: PaletteApi
   agents: AgentsApi
   key: KeyApi
   connection: ConnectionApi

@@ -45,7 +45,8 @@ Le mode abonnement est prévu pour un usage personnel, sur ton propre Mac : Anth
 
 | Action | Comment |
 |---|---|
-| Ouvrir ou fermer le panneau | Clic sur l'icône, ou **⌘ ⇧ Espace** (modifiable dans **⚙**) |
+| Ouvrir ou fermer le panneau | Clic sur l'icône, le Dock ou Cmd+Tab |
+| Poser une question rapide | **⌘ ⇧ Espace** (modifiable dans **⚙**) ouvre la palette au centre de l'écran. ⇥ ou ⌘1 à ⌘9 changent d'agent, ↩ envoie, ⌘↩ continue la conversation dans le panneau |
 | Déplacer l'icône | La glisser : elle s'aimante au coin le plus proche |
 | Fermer le panneau | Échap, ou clic à l'extérieur |
 | Créer un agent | **+ Créer un agent**, à la main ou avec **Générer avec l'IA** |

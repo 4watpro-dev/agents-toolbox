@@ -1,0 +1,120 @@
+/* La fenêtre épouse la palette : la hauteur vient du contenu, pas de la fenêtre. */
+html,
+body,
+#root {
+  height: auto;
+}
+
+.palette {
+  display: flex;
+  flex-direction: column;
+  background: var(--glass);
+  color: var(--text);
+}
+
+.palette-input {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px 10px 12px;
+}
+
+.palette-input textarea {
+  flex: 1;
+  min-width: 0;
+  max-height: 120px;
+  padding: 6px 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 19px;
+  line-height: 1.35;
+  resize: none;
+}
+
+.palette-input textarea::placeholder {
+  color: var(--muted);
+}
+
+.palette-agents {
+  display: flex;
+  gap: 6px;
+  margin: 0;
+  padding: 0 12px 10px;
+  overflow-x: auto;
+  list-style: none;
+  scrollbar-width: none;
+}
+
+.palette-agents::-webkit-scrollbar {
+  display: none;
+}
+
+.palette-agent {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px 3px 4px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--muted);
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+  transition:
+    color 120ms ease,
+    border-color 120ms ease,
+    background 120ms ease;
+}
+
+.palette-agent:hover {
+  color: var(--text);
+}
+
+.palette-agent.is-selected {
+  border-color: var(--accent-line);
+  background: var(--accent-soft);
+  color: var(--text);
+}
+
+.palette-thread {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 420px;
+  padding: 12px 14px;
+  overflow-y: auto;
+  border-top: 1px solid var(--border);
+}
+
+.palette-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-top: 1px solid var(--border);
+}
+
+.palette-footer .palette-hints {
+  flex: 1;
+}
+
+.palette-hints {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11.5px;
+}
+
+.palette-hints-idle {
+  padding: 0 16px 10px;
+}
+
+.palette-empty {
+  margin: 0;
+  padding: 20px 16px;
+  color: var(--muted);
+}

@@ -20,6 +20,7 @@ function widgetAvatar(): AvatarConfig {
 export function registerAgentIpc(): void {
   ipcMain.handle(IPC.widgetGetAvatar, () => widgetAvatar())
   ipcMain.handle(IPC.agentsList, () => listAgents())
+  ipcMain.handle(IPC.agentsLastUsed, () => getSettings().lastAgentId)
 
   ipcMain.handle(IPC.agentsSave, (_event, id: unknown, draft: unknown) => {
     const agent = saveAgent(IdSchema.nullable().parse(id), AgentDraftSchema.parse(draft))
