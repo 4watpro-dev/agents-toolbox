@@ -1,5 +1,7 @@
 import type { ChatFailure } from '../../shared/chat'
+import { textWithAttachments } from '../../shared/attachments'
 import type { Turn } from '../../shared/conversation'
+import type { ContentBlock } from './attachments'
 import type { ResolvedConnector } from './toolGuard'
 
 /**
@@ -53,6 +55,9 @@ export function chatArgs(
     ...(web?.mcpConfig ? ['--mcp-config', web.mcpConfig] : []),
     '--output-format',
     'stream-json',
+    // Le message arrive en JSON sur l'entrée standard : il peut porter des images et des PDF.
+    '--input-format',
+    'stream-json',
     '--include-partial-messages',
     ...(resumeId ? ['--resume', resumeId] : [])
   ]
@@ -95,9 +100,14 @@ export function isMissingSession(result: ResultEvent): boolean {
 export function promptWithHistory(turns: Turn[], text: string): string {
   if (turns.length === 0) return text
   const transcript = turns
-    .map((turn) => `${turn.role === 'user' ? 'La personne' : 'Toi'} : ${turn.text}`)
+    .map((turn) => `${turn.role === 'user' ? 'La personne' : 'Toi'} : ${textWithAttachments(turn.text, turn.attachments)}`)
     .join('\n\n')
   return `Voici le début de votre conversation, pour le contexte :\n\n<conversation>\n${transcript}\n</conversation>\n\nLa personne te dit maintenant :\n\n${text}`
+}
+
+/** Ligne à écrire sur l'entrée standard de Claude Code pour envoyer un message. */
+export function stdinMessage(content: ContentBlock[]): string {
+  return `${JSON.stringify({ type: 'user', message: { role: 'user', content } })}\n`
 }
 
 export interface ResultEvent {

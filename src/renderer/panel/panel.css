@@ -773,10 +773,123 @@ textarea.input {
 
 .chat-input {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-end;
   gap: 7px;
   padding: 8px 10px;
   border-top: 1px solid var(--border);
+}
+
+/* Pièces jointes en attente : toute la largeur, au-dessus du champ. */
+.chat-pending {
+  display: flex;
+  flex-basis: 100%;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.chat-attach {
+  flex: none;
+  align-self: center;
+}
+
+.chat-attach-problem {
+  margin: 0;
+  color: var(--danger, #ff8a8a);
+  font-size: 11.5px;
+}
+
+.chat-view {
+  position: relative;
+}
+
+/* Zone de dépôt : couvre le chat pendant qu'on y glisse des fichiers. */
+.chat-drop {
+  position: absolute;
+  inset: 8px;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border: 2px dashed var(--accent);
+  border-radius: 14px;
+  background: rgb(18 20 25 / 82%);
+  pointer-events: none;
+}
+
+.chat-drop p {
+  margin: 0;
+  font-weight: 600;
+}
+
+.chat-drop small {
+  color: var(--muted);
+}
+
+.attachments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.message .attachments {
+  justify-content: flex-end;
+  margin-bottom: 4px;
+}
+
+.attachment {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 200px;
+  padding: 3px 8px 3px 3px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--surface);
+  font-size: 12px;
+}
+
+.attachment-thumbnail {
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  object-fit: cover;
+}
+
+.attachment-icon {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  background: var(--surface-2);
+  font-size: 15px;
+}
+
+.attachment-name {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.attachment-remove {
+  flex: none;
+  padding: 0 2px;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.attachment-remove:hover {
+  color: var(--text, #fff);
 }
 
 .chat-input textarea {

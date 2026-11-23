@@ -61,7 +61,8 @@ const api: ToolboxApi = {
     login: () => ipcRenderer.invoke(IPC.subscriptionLogin)
   },
   chat: {
-    send: (sessionId, agent, text, agentId) => ipcRenderer.send(IPC.chatSend, sessionId, agent, text, agentId),
+    send: (sessionId, agent, text, agentId, attachments) =>
+      ipcRenderer.send(IPC.chatSend, sessionId, agent, text, agentId, attachments ?? []),
     stop: (sessionId) => ipcRenderer.send(IPC.chatStop, sessionId),
     reset: (sessionId) => ipcRenderer.send(IPC.chatReset, sessionId),
     onEvent: (listener) => subscribe<ChatEvent>(IPC.chatEvent, listener),

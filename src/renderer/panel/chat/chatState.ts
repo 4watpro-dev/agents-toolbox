@@ -1,3 +1,4 @@
+import type { AttachmentMeta } from '../../../shared/attachments'
 import type { AvatarState } from '../../../shared/avatar'
 import type { ChatEvent, ChatFailure } from '../../../shared/chat'
 import type { Confirmation, ConfirmationOutcome } from '../../../shared/connectors'
@@ -5,10 +6,16 @@ import type { Turn } from '../../../shared/conversation'
 import type { Mood } from '../../../shared/replyParser'
 import type { ToolActivity } from '../../../shared/tools'
 
+/** Pièce jointe affichée sous un message. La vignette n'existe que pendant la session. */
+export interface DisplayAttachment extends AttachmentMeta {
+  thumbnail?: string
+}
+
 export interface ChatMessage {
   id: number
   role: 'user' | 'assistant'
   text: string
+  attachments?: DisplayAttachment[]
 }
 
 export interface ChatAction extends Confirmation {
@@ -47,7 +54,12 @@ export const EMPTY_CHAT: ChatState = {
 export function chatFromTurns(turns: Turn[]): ChatState {
   return {
     ...EMPTY_CHAT,
-    messages: turns.map((turn, index) => ({ id: index + 1, role: turn.role, text: turn.text })),
+    messages: turns.map((turn, index) => ({
+      id: index + 1,
+      role: turn.role,
+      text: turn.text,
+      ...(turn.attachments?.length ? { attachments: turn.attachments } : {})
+    })),
     nextId: turns.length + 1
   }
 }
@@ -64,7 +76,7 @@ const MOOD_STATES: Record<Mood, AvatarState> = {
   neutral: 'idle'
 }
 
-export function sendingMessage(state: ChatState, text: string): ChatState {
+export function sendingMessage(state: ChatState, text: string, attachments: DisplayAttachment[] = []): ChatState {
   // Le tour échoué n'est jamais entré dans l'historique du modèle : l'écran doit
   // montrer la même conversation que celle que l'agent connaît.
   const base = state.failure ? dropFailedTurn(state) : state
@@ -76,7 +88,10 @@ export function sendingMessage(state: ChatState, text: string): ChatState {
     notice: null,
     failure: null,
     remembered: [],
-    messages: [...base.messages, { id: base.nextId, role: 'user', text }],
+    messages: [
+      ...base.messages,
+      { id: base.nextId, role: 'user', text, ...(attachments.length > 0 ? { attachments } : {}) }
+    ],
     nextId: base.nextId + 1
   }
 }

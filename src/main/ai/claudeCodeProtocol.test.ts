@@ -8,6 +8,7 @@ import {
   isPlanBilled,
   parseStreamLine,
   promptWithHistory,
+  stdinMessage,
   structuredArgs,
   toResultEvent,
   type ResultEvent
@@ -232,5 +233,27 @@ describe('classifyResult', () => {
 
   it('rassure sur la facturation quand la limite du forfait est atteinte', () => {
     expect(classifyResult(failure({ apiStatus: 429 }))?.message).toContain('Rien ne sera facturé')
+  })
+})
+
+describe('stdinMessage', () => {
+  it('écrit une ligne JSON de message utilisateur', () => {
+    const line = stdinMessage([{ type: 'text', text: 'Salut' }])
+    expect(line.endsWith('\n')).toBe(true)
+    expect(JSON.parse(line)).toEqual({ type: 'user', message: { role: 'user', content: [{ type: 'text', text: 'Salut' }] } })
+  })
+})
+
+describe('promptWithHistory et pièces jointes', () => {
+  it('mentionne les pièces jointes des tours passés', () => {
+    const prompt = promptWithHistory([{ role: 'user', text: 'Vois ça', attachments: [{ name: 'a.png', kind: 'image' }] }], 'Et alors ?')
+    expect(prompt).toContain('La personne : [Pièces jointes : a.png]\nVois ça')
+  })
+})
+
+describe('chatArgs et entrée JSON', () => {
+  it('lit le message en JSON sur l’entrée standard', () => {
+    const args = chatArgs('Prompt', 'm', 'low', null)
+    expect(args[args.indexOf('--input-format') + 1]).toBe('stream-json')
   })
 })

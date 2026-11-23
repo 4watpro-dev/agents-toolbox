@@ -2,6 +2,7 @@
 // npm : ce fichier ne doit avoir aucune dépendance à l'exécution. Les imports de
 // types sont effacés à la compilation. Les schémas zod sont utilisés côté main.
 import type { Agent, AgentDraft } from './agent'
+import type { AttachmentInput } from './attachments'
 import type { AvatarConfig } from './avatar'
 import type { ChatEvent } from './chat'
 import type { Connector, ConnectorInput } from './connectors'
@@ -147,7 +148,7 @@ export interface KeyApi {
 
 export interface ChatApi {
   /** `agentId` nul : essai depuis l'assistant, dont rien n'est conservé. */
-  send(sessionId: string, agent: AgentDraft, text: string, agentId: string | null): void
+  send(sessionId: string, agent: AgentDraft, text: string, agentId: string | null, attachments?: AttachmentInput[]): void
   stop(sessionId: string): void
   reset(sessionId: string): void
   onEvent(listener: (event: ChatEvent) => void): () => void

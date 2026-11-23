@@ -1,7 +1,9 @@
 import Anthropic from '@anthropic-ai/sdk'
 import type { AgentDraft } from '../../shared/agent'
+import { textWithAttachments } from '../../shared/attachments'
 import type { ChatEvent, ChatFailure } from '../../shared/chat'
 import { createReplyParser } from '../../shared/replyParser'
+import { userContent, type OutgoingMessage } from './attachments'
 import type { TurnContext } from './claudeCodeProtocol'
 import { getClient } from './client'
 import { classifyError, MISSING_KEY, REFUSAL } from './errors'
@@ -30,7 +32,7 @@ function fallbackParams(model: string): { betas: string[]; fallbacks: 'default' 
 export async function sendMessage(
   sessionId: string,
   agent: AgentDraft,
-  text: string,
+  message: OutgoingMessage,
   emit: Emit,
   context: TurnContext
 ): Promise<void> {
@@ -45,8 +47,13 @@ export async function sendMessage(
 
   // Après une relance, on repart du texte conservé : les blocs de réflexion ne sont pas enregistrés.
   const history: MessageParam[] =
-    histories.get(sessionId) ?? context.turns.map((turn) => ({ role: turn.role, content: turn.text }))
-  const userMessage: MessageParam = { role: 'user', content: text }
+    histories.get(sessionId) ??
+    context.turns.map((turn) => ({ role: turn.role, content: textWithAttachments(turn.text, turn.attachments) }))
+  // Les pièces jointes restent dans l'historique de la session : l'agent peut y revenir au tour suivant.
+  const userMessage: MessageParam = {
+    role: 'user',
+    content: userContent(message.text, message.attachments) as Anthropic.Beta.Messages.BetaContentBlockParam[]
+  }
   const parser = createReplyParser()
   const tracker = createServerToolTracker()
   const tools = webTools(agent.tools)

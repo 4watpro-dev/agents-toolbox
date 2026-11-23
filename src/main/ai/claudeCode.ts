@@ -22,10 +22,12 @@ import {
   NOT_ON_PLAN,
   parseStreamLine,
   promptWithHistory,
+  stdinMessage,
   structuredArgs,
   type ResultEvent,
   type TurnContext
 } from './claudeCodeProtocol'
+import { userContent, type OutgoingMessage } from './attachments'
 import { GENERATION_INSTRUCTIONS, GENERATION_MODEL } from './generationPrompt'
 import { GeneratedAgentSchema, normalizeGenerated } from './normalizeGenerated'
 import { openToolRun } from './toolBridge'
@@ -101,11 +103,14 @@ function launch(binary: string, args: string[], extraEnv: Record<string, string>
 export function sendViaClaudeCode(
   sessionId: string,
   agent: AgentDraft,
-  text: string,
+  message: OutgoingMessage,
   emit: Emit,
   context: TurnContext
 ): void {
   if (running.has(sessionId)) return
+  const { text, attachments } = message
+  const metas = attachments.map((attachment) => attachment.meta)
+  const userTurn: Turn = metas.length > 0 ? { role: 'user', text, attachments: metas } : { role: 'user', text }
 
   const binary = findBinary()
   if (!binary) {
@@ -181,7 +186,7 @@ export function sendViaClaudeCode(
   })
 
   child.stdin!.on('error', () => undefined)
-  child.stdin!.end(prompt)
+  child.stdin!.end(stdinMessage(userContent(prompt, attachments)))
 
   child.on('error', () => {
     spawnFailed = true
@@ -208,7 +213,7 @@ export function sendViaClaudeCode(
     }
     if (stopped) {
       const partial = visibleText.trim()
-      session.turns.push({ role: 'user', text })
+      session.turns.push(userTurn)
       if (partial) session.turns.push({ role: 'assistant', text: partial })
       emit({ sessionId, type: 'stopped' })
       return
@@ -224,7 +229,7 @@ export function sendViaClaudeCode(
     }
     // Session effacée par Claude Code : on repart d'une session neuve avec l'historique en texte.
     if (usedResume && isMissingSession(finished)) {
-      sendViaClaudeCode(sessionId, agent, text, emit, context)
+      sendViaClaudeCode(sessionId, agent, message, emit, context)
       return
     }
     const failure = classifyResult(finished)
@@ -235,7 +240,7 @@ export function sendViaClaudeCode(
 
     const { text: rest, mood, facts } = parser.finish()
     if (rest) emit({ sessionId, type: 'delta', text: rest })
-    session.turns.push({ role: 'user', text }, { role: 'assistant', text: (visibleText + rest).trim() })
+    session.turns.push(userTurn, { role: 'assistant', text: (visibleText + rest).trim() })
     session.resumeId = finished.sessionId ?? newSessionId
     emit({ sessionId, type: 'done', mood, truncated: finished.stopReason === 'max_tokens', facts })
   })

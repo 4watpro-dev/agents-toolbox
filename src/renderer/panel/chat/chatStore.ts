@@ -1,18 +1,22 @@
 import { useSyncExternalStore } from 'react'
 import type { AgentDraft } from '../../../shared/agent'
+import type { AttachmentInput } from '../../../shared/attachments'
 import {
   applyChatEvent,
   chatFromTurns,
   EMPTY_CHAT,
   forgetRemembered,
   sendingMessage,
-  type ChatState
+  type ChatState,
+  type DisplayAttachment
 } from './chatState'
 
 // Le magasin vit hors des composants : une réponse continue d'arriver si
 // la personne revient à la galerie pendant la génération.
 const sessions = new Map<string, ChatState>()
 const listeners = new Set<() => void>()
+/** Pièces jointes du dernier envoi de chaque session, pour pouvoir le réessayer. */
+const lastAttachments = new Map<string, { inputs: AttachmentInput[]; display: DisplayAttachment[] }>()
 let subscribedToEvents = false
 
 function notify(): void {
@@ -51,14 +55,21 @@ export async function loadChatSession(agentId: string, sessionId: string): Promi
   if (conversation && !sessions.has(sessionId)) update(sessionId, chatFromTurns(conversation.messages))
 }
 
-export function sendChatMessage(sessionId: string, agent: AgentDraft, text: string, agentId: string | null): void {
-  update(sessionId, sendingMessage(current(sessionId), text))
-  window.toolbox.chat.send(sessionId, agent, text, agentId)
+export function sendChatMessage(
+  sessionId: string,
+  agent: AgentDraft,
+  text: string,
+  agentId: string | null,
+  attachments: { inputs: AttachmentInput[]; display: DisplayAttachment[] } = { inputs: [], display: [] }
+): void {
+  lastAttachments.set(sessionId, attachments)
+  update(sessionId, sendingMessage(current(sessionId), text, attachments.display))
+  window.toolbox.chat.send(sessionId, agent, text, agentId, attachments.inputs)
 }
 
 export function retryChatMessage(sessionId: string, agent: AgentDraft, agentId: string | null): void {
   const failure = current(sessionId).failure
-  if (failure) sendChatMessage(sessionId, agent, failure.retryText, agentId)
+  if (failure) sendChatMessage(sessionId, agent, failure.retryText, agentId, lastAttachments.get(sessionId))
 }
 
 export function stopChatMessage(sessionId: string): void {
@@ -68,6 +79,7 @@ export function stopChatMessage(sessionId: string): void {
 export function resetChatSession(sessionId: string): void {
   window.toolbox.chat.reset(sessionId)
   sessions.delete(sessionId)
+  lastAttachments.delete(sessionId)
   notify()
 }
 

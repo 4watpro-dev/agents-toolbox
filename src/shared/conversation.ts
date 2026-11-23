@@ -1,8 +1,16 @@
 import { z } from 'zod'
+import { MAX_NAME_LENGTH } from './attachments'
+
+export const AttachmentMetaSchema = z.object({
+  name: z.string().max(MAX_NAME_LENGTH),
+  kind: z.enum(['image', 'pdf', 'text'])
+})
 
 export const TurnSchema = z.object({
   role: z.enum(['user', 'assistant']),
-  text: z.string()
+  text: z.string(),
+  /** Noms des pièces jointes : leur contenu n'est jamais conservé. */
+  attachments: z.array(AttachmentMetaSchema).optional()
 })
 
 export const ConversationSchema = z.object({

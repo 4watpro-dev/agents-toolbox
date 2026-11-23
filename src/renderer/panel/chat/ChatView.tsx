@@ -1,9 +1,11 @@
-import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
+import { useEffect, useRef, useState, type ClipboardEvent, type DragEvent, type KeyboardEvent } from 'react'
 import type { AgentDraft } from '../../../shared/agent'
+import { ACCEPTED_EXTENSIONS } from '../../../shared/attachments'
 import type { AvatarState } from '../../../shared/avatar'
 import { activityLabel } from '../../../shared/tools'
 import { Avatar } from '../../avatar/Avatar'
 import { ActionCard } from './ActionCard'
+import { AttachmentList } from './AttachmentList'
 import { MessageBubble } from './MessageBubble'
 import {
   loadChatSession,
@@ -13,6 +15,7 @@ import {
   undoRemembered,
   useChatSession
 } from './chatStore'
+import { readAttachments, toSendable, type PendingAttachment } from './pendingAttachments'
 
 // Réessayer n'y changerait rien : il faut d'abord régler la connexion.
 const CONNECTION_ERRORS = new Set(['missing_key', 'invalid_key', 'not_logged_in', 'not_on_plan', 'cli_missing'])
@@ -50,11 +53,57 @@ export function ChatView({
 }: ChatViewProps): React.JSX.Element {
   const chat = useChatSession(sessionId)
   const [input, setInput] = useState('')
+  const [pending, setPending] = useState<PendingAttachment[]>([])
+  const [attachProblems, setAttachProblems] = useState<string[]>([])
+  const [dropping, setDropping] = useState(false)
   const field = useRef<HTMLTextAreaElement>(null)
+  const filePicker = useRef<HTMLInputElement>(null)
+  // Compte les entrées et sorties de glisser : les enfants en déclenchent aussi.
+  const dragDepth = useRef(0)
   const scroller = useRef<HTMLDivElement>(null)
   const stuckToBottom = useRef(true)
 
-  const avatarState: AvatarState = chat.busy ? 'thinking' : input.trim() ? 'listening' : chat.mood
+  const avatarState: AvatarState = chat.busy ? 'thinking' : input.trim() || pending.length > 0 ? 'listening' : chat.mood
+
+  async function addFiles(files: File[], pasted = false): Promise<void> {
+    if (files.length === 0) return
+    const { added, problems } = await readAttachments(files, pending.length, pasted)
+    setPending((current) => [...current, ...added])
+    setAttachProblems(problems)
+    field.current?.focus()
+  }
+
+  function hasFiles(event: DragEvent): boolean {
+    return event.dataTransfer.types.includes('Files')
+  }
+
+  function onDragEnter(event: DragEvent): void {
+    if (!hasFiles(event)) return
+    event.preventDefault()
+    dragDepth.current += 1
+    setDropping(true)
+  }
+
+  function onDragLeave(event: DragEvent): void {
+    if (!hasFiles(event)) return
+    dragDepth.current = Math.max(0, dragDepth.current - 1)
+    if (dragDepth.current === 0) setDropping(false)
+  }
+
+  function onDrop(event: DragEvent): void {
+    event.preventDefault()
+    dragDepth.current = 0
+    setDropping(false)
+    void addFiles(Array.from(event.dataTransfer.files))
+  }
+
+  function onPaste(event: ClipboardEvent<HTMLTextAreaElement>): void {
+    const files = Array.from(event.clipboardData.files)
+    // Du texte copié reste du texte : seuls les fichiers et images deviennent des pièces jointes.
+    if (files.length === 0) return
+    event.preventDefault()
+    void addFiles(files, true)
+  }
 
   useEffect(() => {
     if (agentId) void loadChatSession(agentId, sessionId)
@@ -73,10 +122,12 @@ export function ChatView({
 
   function send(): void {
     const text = input.trim()
-    if (!text || chat.busy) return
+    if ((!text && pending.length === 0) || chat.busy) return
     stuckToBottom.current = true
     setInput('')
-    sendChatMessage(sessionId, agent, text, agentId)
+    setPending([])
+    setAttachProblems([])
+    sendChatMessage(sessionId, agent, text, agentId, toSendable(pending))
   }
 
   function onKeyDown(event: KeyboardEvent<HTMLTextAreaElement>): void {
@@ -88,7 +139,21 @@ export function ChatView({
   }
 
   return (
-    <div className="view">
+    <div
+      className="view chat-view"
+      onDragEnter={onDragEnter}
+      onDragOver={(event) => {
+        if (hasFiles(event)) event.preventDefault()
+      }}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+    >
+      {dropping && (
+        <div className="chat-drop" aria-hidden="true">
+          <p>Dépose ici pour joindre à {agent.name}</p>
+          <small>Images, PDF et fichiers texte</small>
+        </div>
+      )}
       <header className="chat-header">
         <button type="button" className="button-back" onClick={onBack} aria-label={backLabel}>
           ‹
@@ -133,7 +198,7 @@ export function ChatView({
       >
         {agent.greeting && <MessageBubble role="assistant" text={agent.greeting} />}
         {chat.messages.map((message) => (
-          <MessageBubble key={message.id} role={message.role} text={message.text} />
+          <MessageBubble key={message.id} role={message.role} text={message.text} attachments={message.attachments} />
         ))}
         {chat.actions.map((action) => (
           <ActionCard key={action.id} action={action} agentName={agent.name} onAnswer={(approved) => window.toolbox.chat.confirm(action.id, approved)} />
@@ -177,6 +242,42 @@ export function ChatView({
       </div>
 
       <footer className="chat-input">
+        {(pending.length > 0 || attachProblems.length > 0) && (
+          <div className="chat-pending">
+            {pending.length > 0 && (
+              <AttachmentList
+                attachments={pending}
+                onRemove={(index) => setPending((current) => current.filter((_, i) => i !== index))}
+              />
+            )}
+            {attachProblems.map((problem) => (
+              <p key={problem} className="chat-attach-problem" role="alert">
+                {problem}
+              </p>
+            ))}
+          </div>
+        )}
+        <button
+          type="button"
+          className="button-icon chat-attach"
+          aria-label="Joindre des fichiers"
+          title="Joindre des images, PDF ou fichiers texte"
+          disabled={chat.busy}
+          onClick={() => filePicker.current?.click()}
+        >
+          📎
+        </button>
+        <input
+          ref={filePicker}
+          type="file"
+          multiple
+          hidden
+          accept={ACCEPTED_EXTENSIONS}
+          onChange={(event) => {
+            void addFiles(Array.from(event.target.files ?? []))
+            event.target.value = ''
+          }}
+        />
         <textarea
           ref={field}
           className="input"
@@ -186,13 +287,14 @@ export function ChatView({
           value={input}
           onChange={(event) => setInput(event.target.value)}
           onKeyDown={onKeyDown}
+          onPaste={onPaste}
         />
         {chat.busy ? (
           <button type="button" className="button" onClick={() => stopChatMessage(sessionId)}>
             Arrêter
           </button>
         ) : (
-          <button type="button" className="button button-primary" disabled={!input.trim()} onClick={send}>
+          <button type="button" className="button button-primary" disabled={!input.trim() && pending.length === 0} onClick={send}>
             Envoyer
           </button>
         )}

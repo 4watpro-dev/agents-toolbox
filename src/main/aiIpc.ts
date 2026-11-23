@@ -6,6 +6,8 @@ import type { ChatEvent } from '../shared/chat'
 import { ConnectorInputSchema, type Connector } from '../shared/connectors'
 import { IPC, PROVIDERS, type Result, type SaveKeyResult } from '../shared/ipc'
 import { buildSystemPrompt } from '../shared/systemPrompt'
+import type { Turn } from '../shared/conversation'
+import { prepareAttachments } from './ai/attachments'
 import { forgetApiSessions, sendMessage, resetSession, stopMessage } from './ai/chat'
 import {
   claudeResumeId,
@@ -42,6 +44,8 @@ const SessionIdSchema = z.string().regex(/^[\w-]{1,100}$/)
 const ConversationIdSchema = z.uuid()
 const AgentIdSchema = z.uuid()
 const TextSchema = z.string().trim().min(1).max(100_000)
+/** Avec des pièces jointes, le message peut se passer de texte. */
+const OptionalTextSchema = z.string().trim().max(100_000)
 const DescriptionSchema = z.string().trim().min(1).max(2000)
 const KeySchema = z.string().trim().min(1).max(500)
 const FactsSchema = z.array(z.string().max(2000)).max(200)
@@ -71,10 +75,26 @@ async function saveKey(raw: unknown): Promise<Result<SaveKeyResult>> {
   return { ok: true, value: { verified } }
 }
 
-function startTurn(sender: WebContents, sessionId: string, agentIdRaw: unknown, agentRaw: unknown, textRaw: unknown): void {
+function startTurn(
+  sender: WebContents,
+  sessionId: string,
+  agentIdRaw: unknown,
+  agentRaw: unknown,
+  textRaw: unknown,
+  attachmentsRaw: unknown
+): void {
   if (activeTurns.has(sessionId)) return
   const draft = AgentDraftSchema.parse(agentRaw)
-  const text = TextSchema.parse(textRaw)
+  const prepared = prepareAttachments(attachmentsRaw)
+  if (!prepared.ok) {
+    const event: ChatEvent = { sessionId, type: 'error', failure: { code: 'bad_request', message: prepared.message } }
+    if (!sender.isDestroyed()) sender.send(IPC.chatEvent, event)
+    return
+  }
+  const attachments = prepared.value
+  const text = attachments.length > 0 ? OptionalTextSchema.parse(textRaw) : TextSchema.parse(textRaw)
+  const metas = attachments.map((attachment) => attachment.meta)
+  const userTurn: Turn = metas.length > 0 ? { role: 'user', text, attachments: metas } : { role: 'user', text }
   // `null` : essai depuis l'assistant, dont rien n'est conservé.
   const agentId = agentIdRaw === null ? null : AgentIdSchema.parse(agentIdRaw)
   if (agentId) ConversationIdSchema.parse(sessionId)
@@ -115,10 +135,7 @@ function startTurn(sender: WebContents, sessionId: string, agentIdRaw: unknown, 
           appendTurns(
             agentId,
             sessionId,
-            [
-              { role: 'user', text },
-              { role: 'assistant', text: turn.visibleText.trim() }
-            ],
+            [userTurn, { role: 'assistant', text: turn.visibleText.trim() }],
             resumeIdToKeep()
           )
           outgoing = { ...event, facts: rememberFacts(agentId, event.facts) }
@@ -127,7 +144,7 @@ function startTurn(sender: WebContents, sessionId: string, agentIdRaw: unknown, 
           appendTurns(
             agentId,
             sessionId,
-            [{ role: 'user', text }, ...(partial ? [{ role: 'assistant' as const, text: partial }] : [])],
+            [userTurn, ...(partial ? [{ role: 'assistant' as const, text: partial }] : [])],
             null
           )
         } else {
@@ -143,8 +160,9 @@ function startTurn(sender: WebContents, sessionId: string, agentIdRaw: unknown, 
   if (wanted.length > connectors.length) {
     emit({ sessionId, type: 'notice', text: "Les connecteurs sont désactivés en mode clé API, faute de pouvoir y demander ta confirmation. Repasse sur ton abonnement pour t'en servir." })
   }
-  if (usesSubscription()) sendViaClaudeCode(sessionId, draft, text, emit, context)
-  else void sendMessage(sessionId, draft, text, emit, context)
+  const message = { text, attachments }
+  if (usesSubscription()) sendViaClaudeCode(sessionId, draft, message, emit, context)
+  else void sendMessage(sessionId, draft, message, emit, context)
 }
 
 function cancelSession(sessionId: string): void {
@@ -161,8 +179,8 @@ export function registerAiIpc(): void {
     resetClient()
   })
 
-  ipcMain.on(IPC.chatSend, (event, sessionId: unknown, agent: unknown, text: unknown, agentId: unknown) => {
-    startTurn(event.sender, SessionIdSchema.parse(sessionId), agentId, agent, text)
+  ipcMain.on(IPC.chatSend, (event, sessionId: unknown, agent: unknown, text: unknown, agentId: unknown, attachments: unknown) => {
+    startTurn(event.sender, SessionIdSchema.parse(sessionId), agentId, agent, text, attachments)
   })
   ipcMain.on(IPC.chatStop, (_event, sessionId: unknown) => {
     const session = SessionIdSchema.parse(sessionId)

@@ -57,7 +57,7 @@ export function appendTurns(agentId: string, id: string, turns: Turn[], claudeSe
     : {
         id,
         agentId,
-        title: conversationTitle(turns[0]?.text ?? ''),
+        title: conversationTitle(turns[0]?.text || turns[0]?.attachments?.[0]?.name || ''),
         messages: turns,
         claudeSessionId,
         createdAt: now,
