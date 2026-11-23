@@ -85,7 +85,8 @@ export async function runTeam(request: TeamRequest, deliver: Deliver): Promise<T
     const previous = previousFromRuns(getTeamConversation(team.id, conversationId)?.runs ?? [])
     deliver({ conversationId, type: 'phase', phase: 'plan' })
     const roster = members.map((member) => ({ id: member.id, name: member.name, specialty: member.specialty, description: member.description }))
-    const plan = await step(run, chief, planPrompt(text, roster, previous), () => undefined)
+    // Répartir n'est qu'une liste de consignes : une réflexion basse suffit, et coûte bien moins.
+    const plan = await step(run, { ...chief, effort: 'low' }, planPrompt(text, roster, previous), () => undefined)
     if (run.stopped) return stopped()
     if (!plan.ok) return fail(plan.message)
 

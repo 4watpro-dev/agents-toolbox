@@ -25,7 +25,8 @@ export function Palette(): React.JSX.Element {
   const [session, setSession] = useState<{ id: string; agentId: string } | null>(null)
   const [input, setInput] = useState('')
   const [copied, setCopied] = useState(false)
-  const [open, setOpen] = useState(true)
+  // La palette démarre cachée : ses avatars restent figés tant qu’elle ne s’ouvre pas.
+  const [open, setOpen] = useState(false)
   const root = useRef<HTMLDivElement>(null)
   const field = useRef<HTMLTextAreaElement>(null)
   const thread = useRef<HTMLDivElement>(null)
