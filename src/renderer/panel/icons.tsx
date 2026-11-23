@@ -59,3 +59,29 @@ export function TextFileIcon(props: IconProps): React.JSX.Element {
     </Icon>
   )
 }
+
+export function PinIcon({ filled = false, ...props }: IconProps & { filled?: boolean }): React.JSX.Element {
+  return (
+    <Icon {...props}>
+      <path d="M9 4.5h6l-1 5.2 3 3.3H7l3-3.3z" fill={filled ? 'currentColor' : 'none'} />
+      <path d="M12 13v6.5" />
+    </Icon>
+  )
+}
+
+export function ExportIcon(props: IconProps): React.JSX.Element {
+  return (
+    <Icon {...props}>
+      <path d="M12 4v10.5M7.5 10 12 14.5 16.5 10" />
+      <path d="M5 16.5v1.5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-1.5" />
+    </Icon>
+  )
+}
+
+export function TrashIcon(props: IconProps): React.JSX.Element {
+  return (
+    <Icon {...props}>
+      <path d="M5 7h14M10 7V5h4v2M7 7l.8 11.2a1.5 1.5 0 0 0 1.5 1.3h5.4a1.5 1.5 0 0 0 1.5-1.3L17 7" />
+    </Icon>
+  )
+}

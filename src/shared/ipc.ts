@@ -7,6 +7,7 @@ import type { AvatarConfig } from './avatar'
 import type { ChatEvent } from './chat'
 import type { Connector, ConnectorInput } from './connectors'
 import type { Conversation, ConversationSummary } from './conversation'
+import type { SearchHit } from './history'
 
 export const CORNERS = ['top-left', 'top-right', 'bottom-left', 'bottom-right'] as const
 export type Corner = (typeof CORNERS)[number]
@@ -29,6 +30,9 @@ export const IPC = {
   conversationsList: 'conversations:list',
   conversationsGet: 'conversations:get',
   conversationsDelete: 'conversations:delete',
+  conversationsSearch: 'conversations:search',
+  conversationsSetPinned: 'conversations:set-pinned',
+  conversationsExport: 'conversations:export',
   memoryGet: 'memory:get',
   memorySet: 'memory:set',
   shortcutGet: 'shortcut:get',
@@ -123,6 +127,11 @@ export interface ConversationsApi {
   list(agentId: string): Promise<ConversationSummary[]>
   get(agentId: string, id: string): Promise<Conversation | null>
   remove(agentId: string, id: string): Promise<void>
+  /** Cherche dans toutes les conversations de tous les agents. */
+  search(query: string): Promise<SearchHit[]>
+  setPinned(agentId: string, id: string, pinned: boolean): Promise<void>
+  /** Enregistre la conversation en Markdown, à l'endroit choisi. */
+  exportMarkdown(agentId: string, id: string): Promise<TransferResult>
 }
 
 export interface MemoryApi {

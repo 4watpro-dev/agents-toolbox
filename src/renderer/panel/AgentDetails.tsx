@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { Agent } from '../../shared/agent'
 import type { ConversationSummary } from '../../shared/conversation'
+import type { TransferResult } from '../../shared/ipc'
 import { resetChatSession } from './chat/chatStore'
+import { ExportIcon, PinIcon, TrashIcon } from './icons'
 
 interface AgentDetailsProps {
   agent: Agent
@@ -24,6 +26,7 @@ export function AgentDetails({
   const [confirmingId, setConfirmingId] = useState<string | null>(null)
   const [facts, setFacts] = useState<string[]>([])
   const [newFact, setNewFact] = useState('')
+  const [exportResult, setExportResult] = useState<TransferResult | null>(null)
 
   const refreshConversations = useCallback(() => {
     void window.toolbox.conversations.list(agent.id).then(setConversations)
@@ -40,6 +43,15 @@ export function AgentDetails({
     await window.toolbox.conversations.remove(agent.id, id)
     refreshConversations()
     if (id === currentConversationId) onNewConversation()
+  }
+
+  async function togglePin(conversation: ConversationSummary): Promise<void> {
+    await window.toolbox.conversations.setPinned(agent.id, conversation.id, !conversation.pinned)
+    refreshConversations()
+  }
+
+  async function exportConversation(id: string): Promise<void> {
+    setExportResult(await window.toolbox.conversations.exportMarkdown(agent.id, id))
   }
 
   async function saveFacts(next: string[]): Promise<void> {
@@ -69,9 +81,14 @@ export function AgentDetails({
             </button>
           </div>
           {conversations?.length === 0 && <p className="field-hint">Aucune conversation enregistrée.</p>}
+          {exportResult && !(exportResult.ok && exportResult.value.canceled) && (
+            <p className={exportResult.ok ? 'field-hint' : 'form-error'} role="status">
+              {exportResult.ok ? exportResult.value.message : exportResult.message}
+            </p>
+          )}
           <ul className="history-list">
             {conversations?.map((conversation) => (
-              <li key={conversation.id} className="history-item">
+              <li key={conversation.id} className={conversation.pinned ? 'history-item is-pinned' : 'history-item'}>
                 {confirmingId === conversation.id ? (
                   <div className="settings-confirm" role="alertdialog" aria-label="Supprimer cette conversation ?">
                     <span>Supprimer cette conversation ?</span>
@@ -90,20 +107,44 @@ export function AgentDetails({
                       aria-current={conversation.id === currentConversationId ? 'true' : undefined}
                       onClick={() => onOpenConversation(conversation.id)}
                     >
-                      <span className="history-title">{conversation.title}</span>
+                      <span className="history-title">
+                        {conversation.pinned && <PinIcon size={13} filled />}
+                        {conversation.title}
+                      </span>
                       <span className="field-hint">
                         {DATE_FORMAT.format(new Date(conversation.updatedAt))} · {conversation.messageCount} messages
                       </span>
                     </button>
-                    <button
-                      type="button"
-                      className="button-icon"
-                      aria-label={`Supprimer la conversation : ${conversation.title}`}
-                      title="Supprimer"
-                      onClick={() => setConfirmingId(conversation.id)}
-                    >
-                      ×
-                    </button>
+                    <div className="history-actions">
+                      <button
+                        type="button"
+                        className={conversation.pinned ? 'history-action is-on' : 'history-action'}
+                        aria-label={conversation.pinned ? `Désépingler : ${conversation.title}` : `Épingler : ${conversation.title}`}
+                        aria-pressed={conversation.pinned}
+                        title={conversation.pinned ? 'Désépingler' : 'Épingler en haut'}
+                        onClick={() => void togglePin(conversation)}
+                      >
+                        <PinIcon size={16} filled={conversation.pinned} />
+                      </button>
+                      <button
+                        type="button"
+                        className="history-action"
+                        aria-label={`Exporter en Markdown : ${conversation.title}`}
+                        title="Exporter en Markdown"
+                        onClick={() => void exportConversation(conversation.id)}
+                      >
+                        <ExportIcon size={16} />
+                      </button>
+                      <button
+                        type="button"
+                        className="history-action history-action-danger"
+                        aria-label={`Supprimer la conversation : ${conversation.title}`}
+                        title="Supprimer"
+                        onClick={() => setConfirmingId(conversation.id)}
+                      >
+                        <TrashIcon size={16} />
+                      </button>
+                    </div>
                   </>
                 )}
               </li>

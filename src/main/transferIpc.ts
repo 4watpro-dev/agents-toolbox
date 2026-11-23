@@ -3,7 +3,9 @@ import { dialog, ipcMain } from 'electron'
 import { z } from 'zod'
 import { parseAgentsFile, serializeAgents, uniqueName } from '../shared/agentTransfer'
 import { IPC, type TransferResult } from '../shared/ipc'
+import { conversationMarkdown, exportFileName } from '../shared/history'
 import { listAgents, saveAgent } from './store/agents'
+import { getConversation } from './store/conversations'
 import { withPanelHidden } from './windows'
 
 const MAX_FILE_BYTES = 5 * 1024 * 1024
@@ -50,7 +52,27 @@ async function importAgents(): Promise<TransferResult> {
   }
 }
 
+async function exportConversation(agentId: string, id: string): Promise<TransferResult> {
+  const conversation = getConversation(agentId, id)
+  const agent = listAgents().find((candidate) => candidate.id === agentId)
+  if (!conversation || !agent) return { ok: false, message: 'Cette conversation est introuvable.' }
+  const { canceled, filePath } = await dialog.showSaveDialog({
+    defaultPath: exportFileName(conversation.title),
+    filters: [{ name: 'Markdown', extensions: ['md'] }]
+  })
+  if (canceled || !filePath) return CANCELED
+  try {
+    await writeFile(filePath, conversationMarkdown(conversation, agent.name))
+  } catch {
+    return { ok: false, message: "Impossible d'écrire ce fichier. Choisis un autre emplacement." }
+  }
+  return { ok: true, value: { canceled: false, message: 'Conversation exportée en Markdown.' } }
+}
+
 export function registerTransferIpc(): void {
+  ipcMain.handle(IPC.conversationsExport, (_event, agentId: unknown, id: unknown) =>
+    withPanelHidden(() => exportConversation(z.uuid().parse(agentId), z.uuid().parse(id)))
+  )
   ipcMain.handle(IPC.agentsExport, (_event, agentId: unknown) =>
     withPanelHidden(() => exportAgents(z.uuid().nullable().parse(agentId)))
   )

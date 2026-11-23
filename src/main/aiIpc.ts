@@ -29,11 +29,15 @@ import {
   deleteConversation,
   getConversation,
   getFacts,
+  allConversations,
   listConversations,
   rememberFacts,
   setClaudeSession,
-  setFacts
+  setFacts,
+  setPinned
 } from './store/conversations'
+import { listAgents } from './store/agents'
+import { searchConversations } from '../shared/history'
 import { canStoreSecrets, deleteApiKey, readApiKey, writeApiKey } from './store/secrets'
 import { getSettings, updateSettings } from './store/settings'
 
@@ -211,6 +215,13 @@ export function registerAiIpc(): void {
     cancelSession(conversationId)
     deleteConversation(AgentIdSchema.parse(agentId), conversationId)
   })
+
+  ipcMain.handle(IPC.conversationsSearch, (_event, query: unknown) =>
+    searchConversations(allConversations(listAgents().map((agent) => agent.id)), z.string().max(200).parse(query))
+  )
+  ipcMain.handle(IPC.conversationsSetPinned, (_event, agentId: unknown, id: unknown, pinned: unknown) =>
+    setPinned(AgentIdSchema.parse(agentId), ConversationIdSchema.parse(id), z.boolean().parse(pinned))
+  )
 
   ipcMain.handle(IPC.memoryGet, (_event, agentId: unknown) => getFacts(AgentIdSchema.parse(agentId)))
   ipcMain.handle(IPC.memorySet, (_event, agentId: unknown, facts: unknown) =>

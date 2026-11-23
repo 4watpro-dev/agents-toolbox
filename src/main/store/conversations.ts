@@ -40,12 +40,33 @@ export function listConversations(agentId: string): ConversationSummary[] {
               id: conversation.id,
               title: conversation.title,
               messageCount: conversation.messages.length,
-              updatedAt: conversation.updatedAt
+              updatedAt: conversation.updatedAt,
+              pinned: conversation.pinned
             }
           ]
         : []
     })
-    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+    .sort((a, b) => Number(b.pinned) - Number(a.pinned) || b.updatedAt.localeCompare(a.updatedAt))
+}
+
+/** Toutes les conversations des agents donnés, pour la recherche. */
+export function allConversations(agentIds: string[]): Conversation[] {
+  return agentIds.flatMap((agentId) => {
+    let files: string[]
+    try {
+      files = readdirSync(agentDirectory(agentId))
+    } catch {
+      return []
+    }
+    return files
+      .filter((file) => file.endsWith('.json'))
+      .flatMap((file) => getConversation(agentId, file.slice(0, -'.json'.length)) ?? [])
+  })
+}
+
+export function setPinned(agentId: string, id: string, pinned: boolean): void {
+  const existing = getConversation(agentId, id)
+  if (existing) writeJson(conversationPath(agentId, id), { ...existing, pinned })
 }
 
 /** Ajoute des messages à une conversation, en la créant au premier échange. */
@@ -60,6 +81,7 @@ export function appendTurns(agentId: string, id: string, turns: Turn[], claudeSe
         title: conversationTitle(turns[0]?.text || turns[0]?.attachments?.[0]?.name || ''),
         messages: turns,
         claudeSessionId,
+        pinned: false,
         createdAt: now,
         updatedAt: now
       }

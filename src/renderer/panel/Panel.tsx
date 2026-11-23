@@ -116,6 +116,10 @@ export function Panel(): React.JSX.Element {
           agents={agents}
           panelOpen={state.open}
           onOpen={(agent) => void openAgent(agent)}
+          onOpenConversation={(agentId, conversationId) => {
+            void window.toolbox.agents.markUsed(agentId)
+            setView({ name: 'agent', agentId, conversationId })
+          }}
           onOpenSettings={openSettings}
           onCreate={() => setView({ name: 'wizard', agent: null })}
           onEdit={(agent) => setView({ name: 'wizard', agent })}

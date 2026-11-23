@@ -54,6 +54,8 @@ Le mode abonnement est prévu pour un usage personnel, sur ton propre Mac : Anth
 | Joindre des fichiers | Les glisser dans le chat, **📎**, ou coller une image (⌘ V). Images, PDF et fichiers texte, 5 par message |
 | Changer d'agent | Clic sur son nom, en haut du chat |
 | Voir l'historique et la mémoire | **☰**, en haut du chat |
+| Retrouver une conversation | Taper un mot dans la recherche de la galerie : les conversations qui le contiennent s'affichent sous les agents |
+| Épingler ou exporter une conversation | **☰**, puis l'épingle (elle reste en tête) ou la flèche (fichier Markdown) |
 | Sauvegarder ou partager des agents | **⚙** pour tous, **⋯** sur une carte pour un seul |
 | Lancer au démarrage | **⚙**, ou le menu de l'icône dans la barre de menus |
 

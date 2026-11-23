@@ -20,6 +20,8 @@ export const ConversationSchema = z.object({
   messages: z.array(TurnSchema),
   /** Session Claude Code à reprendre. `null` : repartir d'une session neuve. */
   claudeSessionId: z.string().nullable().default(null),
+  /** Épinglée : reste en tête de l'historique. */
+  pinned: z.boolean().default(false),
   createdAt: z.string(),
   updatedAt: z.string()
 })
@@ -37,6 +39,7 @@ export interface ConversationSummary {
   title: string
   messageCount: number
   updatedAt: string
+  pinned: boolean
 }
 
 export const MAX_FACTS = 50

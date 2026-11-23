@@ -32,7 +32,10 @@ const api: ToolboxApi = {
   conversations: {
     list: (agentId) => ipcRenderer.invoke(IPC.conversationsList, agentId),
     get: (agentId, id) => ipcRenderer.invoke(IPC.conversationsGet, agentId, id),
-    remove: (agentId, id) => ipcRenderer.invoke(IPC.conversationsDelete, agentId, id)
+    remove: (agentId, id) => ipcRenderer.invoke(IPC.conversationsDelete, agentId, id),
+    search: (query) => ipcRenderer.invoke(IPC.conversationsSearch, query),
+    setPinned: (agentId, id, pinned) => ipcRenderer.invoke(IPC.conversationsSetPinned, agentId, id, pinned),
+    exportMarkdown: (agentId, id) => ipcRenderer.invoke(IPC.conversationsExport, agentId, id)
   },
   memory: {
     get: (agentId) => ipcRenderer.invoke(IPC.memoryGet, agentId),

@@ -1,13 +1,19 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { CATEGORIES, type Agent } from '../../shared/agent'
 import { filterAgents } from '../../shared/gallery'
+import { MIN_QUERY_LENGTH, type SearchHit } from '../../shared/history'
 import type { TransferResult } from '../../shared/ipc'
 import { AgentCard } from './AgentCard'
+import { ConversationResults } from './ConversationResults'
+
+/** Attente après la dernière frappe avant de chercher dans les conversations. */
+const SEARCH_DELAY_MS = 180
 
 interface GalleryProps {
   agents: Agent[]
   panelOpen: boolean
   onOpen(agent: Agent): void
+  onOpenConversation(agentId: string, conversationId: string): void
   onOpenSettings(): void
   onCreate(): void
   onEdit(agent: Agent): void
@@ -19,6 +25,7 @@ export function Gallery({
   agents,
   panelOpen,
   onOpen,
+  onOpenConversation,
   onOpenSettings,
   onCreate,
   onEdit,
@@ -28,7 +35,26 @@ export function Gallery({
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState<string | null>(null)
   const [transferResult, setTransferResult] = useState<TransferResult | null>(null)
+  const [hits, setHits] = useState<SearchHit[]>([])
   const search = useRef<HTMLInputElement>(null)
+
+  // La même recherche fouille aussi les conversations, une fois la frappe posée.
+  useEffect(() => {
+    if (query.trim().length < MIN_QUERY_LENGTH) {
+      setHits([])
+      return
+    }
+    let current = true
+    const timer = setTimeout(() => {
+      void window.toolbox.conversations.search(query).then((found) => {
+        if (current) setHits(found)
+      })
+    }, SEARCH_DELAY_MS)
+    return () => {
+      current = false
+      clearTimeout(timer)
+    }
+  }, [query])
 
   useEffect(() => {
     if (panelOpen) search.current?.focus()
@@ -49,8 +75,8 @@ export function Gallery({
             ref={search}
             className="input"
             type="search"
-            placeholder="Rechercher un agent"
-            aria-label="Rechercher un agent"
+            placeholder="Rechercher un agent ou une conversation"
+            aria-label="Rechercher un agent ou une conversation"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
           />
@@ -96,11 +122,16 @@ export function Gallery({
               />
             ))}
           </ul>
-        ) : (
+        ) : hits.length === 0 ? (
           <p className="empty">
-            {agents.length === 0 ? "Aucun agent pour l'instant. Crée le premier !" : 'Aucun agent ne correspond.'}
+            {agents.length === 0
+              ? "Aucun agent pour l'instant. Crée le premier !"
+              : query.trim().length >= MIN_QUERY_LENGTH
+                ? 'Aucun agent ni aucune conversation ne correspond.'
+                : 'Aucun agent ne correspond.'}
           </p>
-        )}
+        ) : null}
+        {hits.length > 0 && <ConversationResults hits={hits} agents={agents} onOpen={onOpenConversation} />}
       </div>
 
       <footer className="view-footer">
