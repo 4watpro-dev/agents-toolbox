@@ -13,7 +13,11 @@ const SettingsSchema = z.object({
   lastAgentId: z.string().nullable().default(null),
   // L'abonnement par défaut : l'API, facturée à l'usage, reste un choix explicite.
   provider: z.enum(PROVIDERS).default('subscription'),
-  shortcut: z.string().default(DEFAULT_SHORTCUT)
+  shortcut: z.string().default(DEFAULT_SHORTCUT),
+  /** Taille du panneau choisie en le redimensionnant. */
+  panelSize: z
+    .object({ width: z.number().int().positive(), height: z.number().int().positive() })
+    .default({ width: 380, height: 560 })
 })
 
 export type Settings = z.infer<typeof SettingsSchema>
@@ -22,7 +26,8 @@ const DEFAULTS: Settings = {
   widget: { displayId: null, corner: 'bottom-right' },
   lastAgentId: null,
   provider: 'subscription',
-  shortcut: DEFAULT_SHORTCUT
+  shortcut: DEFAULT_SHORTCUT,
+  panelSize: { width: 380, height: 560 }
 }
 
 const settingsPath = (): string => join(app.getPath('userData'), 'settings.json')

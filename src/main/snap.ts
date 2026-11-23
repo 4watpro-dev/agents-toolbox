@@ -52,6 +52,17 @@ export function panelPosition(
   }
 }
 
+/**
+ * Taille du panneau ramenée dans l'écran : jamais plus petite que le minimum,
+ * jamais plus grande que la zone disponible à côté de l'icône.
+ */
+export function fitPanelSize(wanted: Size, available: Size, minimum: Size): Size {
+  return {
+    width: Math.round(clamp(wanted.width, minimum.width, available.width)),
+    height: Math.round(clamp(wanted.height, minimum.height, available.height))
+  }
+}
+
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(value, Math.max(min, max)))
 }

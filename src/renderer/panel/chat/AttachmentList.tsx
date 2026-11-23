@@ -1,7 +1,12 @@
 import type { AttachmentKind } from '../../../shared/attachments'
+import { DocumentIcon, ImageIcon, TextFileIcon } from '../icons'
 import type { DisplayAttachment } from './chatState'
 
-const KIND_ICONS: Record<AttachmentKind, string> = { image: '🖼', pdf: '📄', text: '📝' }
+const KIND_ICONS: Record<AttachmentKind, () => React.JSX.Element> = {
+  image: () => <ImageIcon size={16} />,
+  pdf: () => <DocumentIcon size={16} />,
+  text: () => <TextFileIcon size={16} />
+}
 
 interface AttachmentListProps {
   attachments: DisplayAttachment[]
@@ -18,7 +23,7 @@ export function AttachmentList({ attachments, onRemove }: AttachmentListProps): 
             <img className="attachment-thumbnail" src={attachment.thumbnail} alt="" />
           ) : (
             <span className="attachment-icon" aria-hidden="true">
-              {KIND_ICONS[attachment.kind]}
+              {KIND_ICONS[attachment.kind]()}
             </span>
           )}
           <span className="attachment-name">{attachment.name}</span>

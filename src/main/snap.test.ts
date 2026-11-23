@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { cornerPosition, nearestCorner, panelPosition } from './snap'
+import { cornerPosition, fitPanelSize, nearestCorner, panelPosition } from './snap'
 
 const screen = { x: 0, y: 25, width: 1440, height: 875 }
 // Écran secondaire placé à gauche : ses coordonnées sont négatives.
@@ -50,5 +50,18 @@ describe('panelPosition', () => {
     const small = { x: 0, y: 25, width: 1024, height: 500 }
     const widget = { x: 936, y: 437, width: 72, height: 72 }
     expect(panelPosition('bottom-right', small, widget, panel, 0).y).toBe(25)
+  })
+})
+
+describe('fitPanelSize', () => {
+  const minimum = { width: 340, height: 420 }
+
+  it('garde la taille choisie quand elle tient', () => {
+    expect(fitPanelSize({ width: 600, height: 700 }, { width: 1440, height: 800 }, minimum)).toEqual({ width: 600, height: 700 })
+  })
+
+  it("la réduit à l'écran disponible, sans passer sous le minimum", () => {
+    expect(fitPanelSize({ width: 2000, height: 1200 }, { width: 1280, height: 720 }, minimum)).toEqual({ width: 1280, height: 720 })
+    expect(fitPanelSize({ width: 100, height: 100 }, { width: 1280, height: 720 }, minimum)).toEqual(minimum)
   })
 })

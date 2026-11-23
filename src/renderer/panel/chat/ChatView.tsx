@@ -5,6 +5,7 @@ import type { AvatarState } from '../../../shared/avatar'
 import { activityLabel } from '../../../shared/tools'
 import { Avatar } from '../../avatar/Avatar'
 import { ActionCard } from './ActionCard'
+import { PaperclipIcon } from '../icons'
 import { AttachmentList } from './AttachmentList'
 import { MessageBubble } from './MessageBubble'
 import {
@@ -259,13 +260,13 @@ export function ChatView({
         )}
         <button
           type="button"
-          className="button-icon chat-attach"
+          className="chat-attach"
           aria-label="Joindre des fichiers"
           title="Joindre des images, PDF ou fichiers texte"
           disabled={chat.busy}
           onClick={() => filePicker.current?.click()}
         >
-          📎
+          <PaperclipIcon size={19} />
         </button>
         <input
           ref={filePicker}

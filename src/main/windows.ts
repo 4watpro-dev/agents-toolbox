@@ -2,7 +2,7 @@ import { join } from 'node:path'
 import { app, BrowserWindow, ipcMain, screen, shell, type Display } from 'electron'
 import { z } from 'zod'
 import { IPC, type Corner, type PanelState } from '../shared/ipc'
-import { cornerPosition, nearestCorner, panelPosition } from './snap'
+import { cornerPosition, fitPanelSize, nearestCorner, panelPosition } from './snap'
 import type { AvatarConfig } from '../shared/avatar'
 import { getSettings, updateSettings } from './store/settings'
 
@@ -14,6 +14,8 @@ const TimestampSchema = z.number().finite().nonnegative()
 const WIDGET_SIZE = { width: 80, height: 80 }
 const WIDGET_INSET = 12
 const PANEL_SIZE = { width: 380, height: 560 }
+/** En dessous, l'en-tête du chat et la galerie ne tiennent plus. */
+const PANEL_MIN_SIZE = { width: 340, height: 420 }
 const PANEL_GAP = 8
 const EDGE_MARGIN = 4
 const DRAG_INTERVAL_MS = 16
@@ -149,8 +151,15 @@ export function openPanel(requestedAt = Date.now()): void {
     width: bounds.width - WIDGET_INSET * 2,
     height: bounds.height - WIDGET_INSET * 2
   }
-  const position = panelPosition(corner, currentDisplay().workArea, circle, PANEL_SIZE, PANEL_GAP)
-  panel.setBounds({ ...position, ...PANEL_SIZE })
+  const area = currentDisplay().workArea
+  // Le panneau ne doit pas recouvrir l'icône : sa hauteur laisse la place du rond.
+  const size = fitPanelSize(
+    getSettings().panelSize,
+    { width: area.width, height: area.height - circle.height - PANEL_GAP },
+    PANEL_MIN_SIZE
+  )
+  const position = panelPosition(corner, area, circle, size, PANEL_GAP)
+  panel.setBounds({ ...position, ...size })
   panelOpen = true
   sendPanelState(true, requestedAt)
   panel.show()
@@ -284,7 +293,10 @@ function createPanel(): BrowserWindow {
     vibrancy: 'under-window',
     visualEffectState: 'active',
     backgroundColor: '#00000000',
-    resizable: false,
+    // Redimensionnable par ses bords ; la taille choisie est retenue pour les ouvertures suivantes.
+    resizable: true,
+    minWidth: PANEL_MIN_SIZE.width,
+    minHeight: PANEL_MIN_SIZE.height,
     minimizable: false,
     maximizable: false,
     fullscreenable: false,
@@ -295,6 +307,11 @@ function createPanel(): BrowserWindow {
   })
   floatAboveEverything(window)
   keepNavigationInApp(window)
+  window.on('resized', () => {
+    if (!panelOpen) return
+    const [width, height] = window.getSize()
+    updateSettings({ panelSize: { width: width!, height: height! } })
+  })
   window.on('blur', () => {
     if (!panelOpen) return
     lastBlurCloseAt = Date.now()

@@ -50,10 +50,13 @@ Le mode abonnement est prévu pour un usage personnel, sur ton propre Mac : Anth
 | Fermer le panneau | Échap, ou clic à l'extérieur |
 | Créer un agent | **+ Créer un agent**, à la main ou avec **Générer avec l'IA** |
 | Essayer un agent avant de l'enregistrer | **Tester**, dans l'assistant de création |
+| Joindre des fichiers | Les glisser dans le chat, **📎**, ou coller une image (⌘ V). Images, PDF et fichiers texte, 5 par message |
 | Changer d'agent | Clic sur son nom, en haut du chat |
 | Voir l'historique et la mémoire | **☰**, en haut du chat |
 | Sauvegarder ou partager des agents | **⚙** pour tous, **⋯** sur une carte pour un seul |
 | Lancer au démarrage | **⚙**, ou le menu de l'icône dans la barre de menus |
+
+L'historique garde le nom des pièces jointes, jamais leur contenu.
 
 Avec l’app installée, le lancement au démarrage passe par l’option « Ouvrir à la connexion » de macOS. En mode développement, il lance la version buildée du projet : après une mise à jour du code, relance `npm run build`.
 

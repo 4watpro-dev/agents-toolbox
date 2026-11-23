@@ -395,7 +395,8 @@ textarea.input {
 
 .card-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  /* Deux colonnes dans le panneau compact, davantage quand on l'agrandit. */
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   gap: 8px;
   margin: 0;
   padding: 0;
@@ -788,9 +789,45 @@ textarea.input {
   gap: 4px;
 }
 
+/* Bouton pièce jointe : rond discret qui s'éclaire au survol. */
 .chat-attach {
+  display: grid;
   flex: none;
+  place-items: center;
   align-self: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--muted);
+  cursor: pointer;
+  transition:
+    color 140ms ease,
+    border-color 140ms ease,
+    background 140ms ease,
+    transform 140ms ease;
+}
+
+.chat-attach:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: var(--surface-2);
+  color: var(--accent);
+}
+
+.chat-attach:active:not(:disabled) {
+  transform: scale(0.94);
+}
+
+.chat-attach:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.chat-attach:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .chat-attach-problem {
@@ -868,7 +905,7 @@ textarea.input {
   height: 30px;
   border-radius: 6px;
   background: var(--surface-2);
-  font-size: 15px;
+  color: var(--accent);
 }
 
 .attachment-name {
