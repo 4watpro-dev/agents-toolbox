@@ -21,7 +21,8 @@ const STATE_LABELS: Record<AvatarState, string> = {
   happy: 'Content',
   surprised: 'Surpris',
   confused: 'Confus',
-  sorry: 'Désolé'
+  sorry: 'Désolé',
+  sleepy: 'Endormi'
 }
 
 interface ColorRowProps {

@@ -14,7 +14,8 @@ export const AVATAR_STATES = [
   'happy',
   'surprised',
   'confused',
-  'sorry'
+  'sorry',
+  'sleepy'
 ] as const
 export type AvatarState = (typeof AVATAR_STATES)[number]
 

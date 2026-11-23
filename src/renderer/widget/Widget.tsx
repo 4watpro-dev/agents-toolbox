@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type PointerEvent } from 'react'
 import { DEFAULT_AVATAR, type AvatarConfig } from '../../shared/avatar'
 import { Avatar } from '../avatar/Avatar'
+import { CELEBRATE_MS, WAKE_SURPRISE_MS, WAKE_TOTAL_MS, widgetMood } from './widgetMood'
 
 const DRAG_THRESHOLD_PX = 4
 
@@ -16,13 +17,56 @@ export function Widget(): React.JSX.Element {
   const [hovered, setHovered] = useState(false)
   const [avatar, setAvatar] = useState<AvatarConfig>(DEFAULT_AVATAR)
   const [badge, setBadge] = useState(false)
+  const [away, setAway] = useState(false)
+  const [working, setWorking] = useState(false)
+  const [waking, setWaking] = useState<'surprised' | 'happy' | null>(null)
+  const [celebrating, setCelebrating] = useState(false)
+  const timers = useRef<ReturnType<typeof setTimeout>[]>([])
+
+  /** Joue une petite scène limitée dans le temps : rien ne tourne en continu. */
+  function later(delay: number, action: () => void): void {
+    timers.current.push(setTimeout(action, delay))
+  }
+
+  useEffect(() => () => timers.current.forEach(clearTimeout), [])
 
   useEffect(() => {
     void window.toolbox.widget.getAvatar().then(setAvatar)
     return window.toolbox.widget.onAvatar(setAvatar)
   }, [])
 
-  useEffect(() => window.toolbox.widget.onBadge(setBadge), [])
+  useEffect(
+    () =>
+      window.toolbox.widget.onBadge((visible) => {
+        setBadge((before) => {
+          // Un nouveau résultat : le fantôme fête la fin de la tâche.
+          if (visible && !before) {
+            setCelebrating(true)
+            later(CELEBRATE_MS, () => setCelebrating(false))
+          }
+          return visible
+        })
+      }),
+    []
+  )
+
+  useEffect(
+    () =>
+      window.toolbox.widget.onSignal((signal) => {
+        if (signal.type === 'working') setWorking(signal.on)
+        else if (signal.type === 'away') setAway(true)
+        else {
+          setAway(false)
+          setWaking('surprised')
+          later(WAKE_SURPRISE_MS, () => setWaking('happy'))
+          later(WAKE_TOTAL_MS, () => setWaking(null))
+        }
+      }),
+    []
+  )
+
+  const mood = widgetMood({ dragging, hovered, waking, celebrating, working, badge, away })
+  const scene = celebrating ? 'is-celebrating' : waking === 'surprised' ? 'is-waking' : away && !hovered ? 'is-asleep' : ''
 
   function onPointerDown(event: PointerEvent<HTMLButtonElement>): void {
     if (event.button !== 0) return
@@ -65,8 +109,15 @@ export function Widget(): React.JSX.Element {
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerUp}
     >
-      <Avatar config={avatar} state={(hovered && !dragging) || badge ? 'happy' : 'idle'} size={46} groundShadow={false} floating={false} />
-      {badge && <span className="widget-badge" aria-hidden="true" />}
+      <span className={`widget-ghost ${scene}`}>
+        <Avatar config={avatar} state={mood} size={46} groundShadow={false} floating={false} />
+      </span>
+      {scene === 'is-asleep' && (
+        <span className="widget-zzz" aria-hidden="true">
+          z
+        </span>
+      )}
+      {badge && <span className={celebrating ? 'widget-badge is-new' : 'widget-badge'} aria-hidden="true" />}
     </button>
   )
 }

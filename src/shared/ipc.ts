@@ -22,6 +22,7 @@ export const IPC = {
   widgetGetAvatar: 'widget:get-avatar',
   widgetAvatar: 'widget:avatar',
   widgetBadge: 'widget:badge',
+  widgetSignal: 'widget:signal',
   tasksList: 'tasks:list',
   tasksSave: 'tasks:save',
   tasksRemove: 'tasks:remove',
@@ -123,7 +124,12 @@ export interface WidgetApi {
   onAvatar(listener: (avatar: AvatarConfig) => void): () => void
   /** Pastille : un résultat de tâche attend d'être lu. */
   onBadge(listener: (visible: boolean) => void): () => void
+  /** Ce qui se passe autour : absence, retour, tâche en cours. */
+  onSignal(listener: (signal: WidgetSignal) => void): () => void
 }
+
+/** Ce à quoi le fantôme de l'icône réagit. */
+export type WidgetSignal = { type: 'away' } | { type: 'back' } | { type: 'working'; on: boolean }
 
 /** Tâche telle que l'interface l'affiche : avec sa prochaine exécution et son état. */
 export interface TaskView extends Task {

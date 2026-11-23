@@ -1,7 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import type { AvatarConfig } from '../shared/avatar'
 import type { ChatEvent } from '../shared/chat'
-import { IPC, type PanelNavigation, type PanelState, type TeamEvent, type ToolboxApi } from '../shared/ipc'
+import { IPC, type PanelNavigation, type PanelState, type TeamEvent, type ToolboxApi, type WidgetSignal } from '../shared/ipc'
 
 function subscribe<T>(channel: string, listener: (value: T) => void): () => void {
   const handler = (_event: Electron.IpcRendererEvent, value: T): void => listener(value)
@@ -16,7 +16,8 @@ const api: ToolboxApi = {
     dragEnd: () => ipcRenderer.send(IPC.widgetDragEnd),
     getAvatar: () => ipcRenderer.invoke(IPC.widgetGetAvatar),
     onAvatar: (listener) => subscribe<AvatarConfig>(IPC.widgetAvatar, listener),
-    onBadge: (listener) => subscribe<boolean>(IPC.widgetBadge, listener)
+    onBadge: (listener) => subscribe<boolean>(IPC.widgetBadge, listener),
+    onSignal: (listener) => subscribe<WidgetSignal>(IPC.widgetSignal, listener)
   },
   panel: {
     onState: (listener) => subscribe<PanelState>(IPC.panelState, listener),

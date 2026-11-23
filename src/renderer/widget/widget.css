@@ -67,3 +67,91 @@ body,
   border-radius: 50%;
   background: #c8f031;
 }
+
+/* Scènes du fantôme : courtes, en transformations seules (peu coûteuses). */
+.widget-ghost {
+  display: grid;
+  place-items: center;
+}
+
+/* Une tâche vient de finir : quatre bonds de joie. */
+.widget-ghost.is-celebrating {
+  animation: ghost-hop 650ms cubic-bezier(0.3, 1.4, 0.5, 1) 4;
+}
+
+@keyframes ghost-hop {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0);
+  }
+  35% {
+    transform: translateY(-7px) rotate(-6deg);
+  }
+  65% {
+    transform: translateY(1px) rotate(5deg);
+  }
+}
+
+/* Réveil : un petit sursaut. */
+.widget-ghost.is-waking {
+  animation: ghost-wake 420ms cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+
+@keyframes ghost-wake {
+  40% {
+    transform: translateY(-5px) scale(1.12);
+  }
+}
+
+/* Absence : un « z » qui monte doucement, au ralenti. */
+.widget-zzz {
+  position: absolute;
+  top: 2px;
+  right: 7px;
+  color: #c8f031;
+  font: 600 10px/1 -apple-system, sans-serif;
+  opacity: 0;
+  pointer-events: none;
+  animation: ghost-zzz 3.2s ease-in-out infinite;
+}
+
+@keyframes ghost-zzz {
+  0% {
+    opacity: 0;
+    transform: translate(0, 4px) scale(0.8);
+  }
+  30% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(4px, -6px) scale(1.15);
+  }
+}
+
+/* Nouveau résultat : la pastille pulse quelques fois, puis se calme. */
+.widget-badge.is-new {
+  animation: badge-pulse 1s ease-out 5;
+}
+
+@keyframes badge-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgb(200 240 49 / 70%);
+  }
+  100% {
+    box-shadow: 0 0 0 8px rgb(200 240 49 / 0%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .widget-ghost.is-celebrating,
+  .widget-ghost.is-waking,
+  .widget-zzz,
+  .widget-badge.is-new {
+    animation: none;
+  }
+
+  .widget-zzz {
+    opacity: 0.9;
+  }
+}

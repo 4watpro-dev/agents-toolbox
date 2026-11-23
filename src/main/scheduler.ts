@@ -7,7 +7,7 @@ import { listTasks, updateTaskRun } from './store/tasks'
 import { collectReply, runTurn } from './turns'
 import { getTeam } from './store/teams'
 import { runTeam } from './team'
-import { openConversationInPanel, openTeamConversationInPanel, setWidgetBadge } from './windows'
+import { openConversationInPanel, openTeamConversationInPanel, sendWidgetSignal, setWidgetBadge } from './windows'
 
 const CHECK_INTERVAL_MS = 30_000
 /** Laisse l'app finir de démarrer avant de rattraper les tâches manquées. */
@@ -15,6 +15,14 @@ const STARTUP_DELAY_MS = 8_000
 const PREVIEW_LENGTH = 140
 
 const running = new Set<string>()
+
+/** Le fantôme prend son air concentré tant qu'une tâche tourne. */
+function markRunning(id: string, on: boolean): void {
+  const before = running.size
+  if (on) running.add(id)
+  else running.delete(id)
+  if ((before === 0) !== (running.size === 0)) sendWidgetSignal({ type: 'working', on: running.size > 0 })
+}
 let onChange: () => void = () => undefined
 
 /** Prévient l'interface qu'une tâche a commencé ou fini, pour mettre à jour son état. */
@@ -51,13 +59,13 @@ async function runTeamTask(task: Task, teamId: string): Promise<void> {
     onChange()
     return
   }
-  running.add(task.id)
+  markRunning(task.id, true)
   const conversationId = randomUUID()
   updateTaskRun(task.id, { lastRunAt: startedAt.toISOString(), lastStatus: null, lastMessage: null, lastConversationId: conversationId })
   onChange()
   const text = `[Tâche programmée « ${task.title} », ${describeDate(startedAt)}]\n\n${task.prompt}`
   const outcome = await runTeam({ teamId, conversationId, text, scheduledTitle: task.title }, () => undefined)
-  running.delete(task.id)
+  markRunning(task.id, false)
   if (outcome.ok) {
     updateTaskRun(task.id, { lastRunAt: startedAt.toISOString(), lastStatus: 'ok', lastMessage: null, lastConversationId: conversationId })
     setWidgetBadge(true)
@@ -81,7 +89,7 @@ export async function runTask(task: Task): Promise<void> {
     return
   }
 
-  running.add(task.id)
+  markRunning(task.id, true)
   const conversationId = randomUUID()
   // Marquée tout de suite : la vérification suivante ne la relance pas pendant qu'elle tourne.
   updateTaskRun(task.id, { lastRunAt: startedAt.toISOString(), lastStatus: null, lastMessage: null, lastConversationId: conversationId })
@@ -91,7 +99,7 @@ export async function runTask(task: Task): Promise<void> {
   const reply = collectReply()
   const started = runTurn({ sessionId: conversationId, agentId: agent.id, draft: agent, text, attachments: [], unattended: true }, reply.deliver)
   const outcome = started ? await reply.result : { ok: false, text: '', message: 'Une autre réponse est en cours.' }
-  running.delete(task.id)
+  markRunning(task.id, false)
 
   if (outcome.ok) {
     setConversationTitle(agent.id, conversationId, task.title)

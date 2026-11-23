@@ -11,6 +11,7 @@ import { migrateLoginItem } from './loginItem'
 import { createPalette } from './palette'
 import { registerTaskIpc } from './taskIpc'
 import { registerTeamIpc } from './teamIpc'
+import { startActivityWatch } from './activity'
 import { createWindows, openPanel, openPanelOnActivate } from './windows'
 
 if (!app.requestSingleInstanceLock()) {
@@ -40,6 +41,7 @@ if (!app.requestSingleInstanceLock()) {
     createTray()
     registerTaskIpc()
     registerTeamIpc()
+    startActivityWatch()
     startShortcut()
   })
 }

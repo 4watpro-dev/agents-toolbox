@@ -65,6 +65,8 @@ Le mode abonnement est prévu pour un usage personnel, sur ton propre Mac : Anth
 
 L'historique garde le nom des pièces jointes, jamais leur contenu.
 
+Le fantôme de l'icône réagit : il s'assoupit après 5 minutes sans clavier ni souris (ou écran verrouillé), se réveille à ton retour, prend un air concentré pendant une tâche programmée, et fait quelques bonds quand elle se termine.
+
 Les tâches programmées tournent tant que le Mac est allumé et l'app ouverte. Une tâche manquée (Mac éteint ou en veille) est exécutée une fois, dès le retour. Elles n'utilisent pas les connecteurs, dont les actions demandent ta confirmation.
 
 Avec l’app installée, le lancement au démarrage passe par l’option « Ouvrir à la connexion » de macOS. En mode développement, il lance la version buildée du projet : après une mise à jour du code, relance `npm run build`.

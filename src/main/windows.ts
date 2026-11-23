@@ -1,7 +1,7 @@
 import { join } from 'node:path'
 import { app, BrowserWindow, ipcMain, screen, shell, type Display } from 'electron'
 import { z } from 'zod'
-import { IPC, type Corner, type PanelState } from '../shared/ipc'
+import { IPC, type Corner, type PanelState, type WidgetSignal } from '../shared/ipc'
 import { cornerPosition, fitPanelSize, nearestCorner, panelPosition } from './snap'
 import type { AvatarConfig } from '../shared/avatar'
 import { getSettings, updateSettings } from './store/settings'
@@ -148,6 +148,11 @@ function fadePanel(to: number, duration: number, done?: () => void): void {
 /** Pastille sur l'icône : un résultat de tâche attend. Elle s'efface à l'ouverture du panneau. */
 export function setWidgetBadge(visible: boolean): void {
   if (!widget.isDestroyed()) widget.webContents.send(IPC.widgetBadge, visible)
+}
+
+/** Prévient le fantôme de l'icône : absence, retour, tâche en cours. */
+export function sendWidgetSignal(signal: WidgetSignal): void {
+  if (!widget.isDestroyed()) widget.webContents.send(IPC.widgetSignal, signal)
 }
 
 /** Prévient le panneau qu'une tâche a changé d'état. */

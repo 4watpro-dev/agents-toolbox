@@ -254,11 +254,22 @@ interface EyeProps {
   style: EyeStyle
   ink: string
   scale: number
-  shape: 'open' | 'arc'
+  shape: 'open' | 'arc' | 'closed'
   closed: boolean
 }
 
 function Eye({ x, style, ink, scale, shape, closed }: EyeProps): React.JSX.Element {
+  if (shape === 'closed') {
+    return (
+      <path
+        d={`M${x - 5.5} ${EYE_Y} Q${x} ${EYE_Y + 4.5} ${x + 5.5} ${EYE_Y}`}
+        fill="none"
+        stroke={ink}
+        strokeWidth={2.6}
+        strokeLinecap="round"
+      />
+    )
+  }
   if (shape === 'arc') {
     return (
       <path

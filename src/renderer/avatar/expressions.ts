@@ -5,8 +5,8 @@ export interface Expression {
   gaze: { x: number; y: number }
   leftEye: number
   rightEye: number
-  /** `arc` remplace les yeux par deux arcs souriants. */
-  eyeShape: 'open' | 'arc'
+  /** `arc` : deux arcs souriants. `closed` : paupières baissées, le fantôme dort. */
+  eyeShape: 'open' | 'arc' | 'closed'
   blinks: boolean
   head: { y: number; rotate: number }
   /** Aura derrière le fantôme : fixe à l'écoute, pulsée pendant la réflexion. */
@@ -89,5 +89,17 @@ export const EXPRESSIONS: Record<AvatarState, Expression> = {
     dimmed: true,
     mouth: 'M54 62 Q60 56 66 62',
     brows: { left: 'M42 33 L52 29', right: 'M68 29 L78 33' }
+  },
+  // Personne au clavier depuis un moment : le fantôme s'assoupit.
+  sleepy: {
+    gaze: { x: 0, y: 2 },
+    leftEye: 1,
+    rightEye: 1,
+    eyeShape: 'closed',
+    blinks: false,
+    head: { y: 3, rotate: 6 },
+    aura: 'off',
+    dimmed: true,
+    mouth: 'M58 58 Q60 59.5 62 58'
   }
 }
