@@ -5,6 +5,7 @@ import { DEFAULT_AVATAR, type AvatarConfig } from '../shared/avatar'
 import { IPC } from '../shared/ipc'
 import { listAgents, removeAgent, saveAgent, setFavorite } from './store/agents'
 import { deleteAgentData } from './store/conversations'
+import { removeAgentTasks } from './store/tasks'
 import { getSettings, updateSettings } from './store/settings'
 import { sendWidgetAvatar } from './windows'
 
@@ -36,6 +37,7 @@ export function registerAgentIpc(): void {
     const agentId = IdSchema.parse(id)
     removeAgent(agentId)
     deleteAgentData(agentId)
+    removeAgentTasks(agentId)
     if (getSettings().lastAgentId === agentId) updateSettings({ lastAgentId: null })
     sendWidgetAvatar(widgetAvatar())
   })

@@ -8,6 +8,7 @@ import type { ChatEvent } from './chat'
 import type { Connector, ConnectorInput } from './connectors'
 import type { Conversation, ConversationSummary } from './conversation'
 import type { SearchHit } from './history'
+import type { Task, TaskInput } from './schedule'
 
 export const CORNERS = ['top-left', 'top-right', 'bottom-left', 'bottom-right'] as const
 export type Corner = (typeof CORNERS)[number]
@@ -18,6 +19,12 @@ export const IPC = {
   widgetDragEnd: 'widget:drag-end',
   widgetGetAvatar: 'widget:get-avatar',
   widgetAvatar: 'widget:avatar',
+  widgetBadge: 'widget:badge',
+  tasksList: 'tasks:list',
+  tasksSave: 'tasks:save',
+  tasksRemove: 'tasks:remove',
+  tasksRunNow: 'tasks:run-now',
+  tasksChanged: 'tasks:changed',
   panelState: 'panel:state',
   panelPainted: 'panel:painted',
   panelClose: 'panel:close',
@@ -101,6 +108,24 @@ export interface WidgetApi {
   dragEnd(): void
   getAvatar(): Promise<AvatarConfig>
   onAvatar(listener: (avatar: AvatarConfig) => void): () => void
+  /** Pastille : un résultat de tâche attend d'être lu. */
+  onBadge(listener: (visible: boolean) => void): () => void
+}
+
+/** Tâche telle que l'interface l'affiche : avec sa prochaine exécution et son état. */
+export interface TaskView extends Task {
+  nextRunAt: string | null
+  running: boolean
+}
+
+export interface TasksApi {
+  list(agentId: string): Promise<TaskView[]>
+  /** `id` nul : crée une tâche. */
+  save(id: string | null, input: TaskInput): Promise<Result<TaskView>>
+  remove(id: string): Promise<void>
+  runNow(id: string): void
+  /** Une tâche a commencé ou fini. */
+  onChanged(listener: () => void): () => void
 }
 
 /** Où le panneau doit aller : les réglages, ou une conversation précise. */
@@ -212,6 +237,7 @@ export interface ToolboxApi {
   preferences: PreferencesApi
   chat: ChatApi
   connectors: ConnectorsApi
+  tasks: TasksApi
   generateAgent(description: string): Promise<Result<AgentDraft>>
   copyText(text: string): void
 }

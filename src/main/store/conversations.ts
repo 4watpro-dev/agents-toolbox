@@ -121,3 +121,8 @@ export function deleteAgentData(agentId: string): void {
   rmSync(agentDirectory(agentId), { recursive: true, force: true })
   rmSync(memoryPath(agentId), { force: true })
 }
+
+export function setConversationTitle(agentId: string, id: string, title: string): void {
+  const existing = getConversation(agentId, id)
+  if (existing) writeJson(conversationPath(agentId, id), { ...existing, title })
+}

@@ -4,6 +4,7 @@ import type { ConversationSummary } from '../../shared/conversation'
 import type { TransferResult } from '../../shared/ipc'
 import { resetChatSession } from './chat/chatStore'
 import { ExportIcon, PinIcon, TrashIcon } from './icons'
+import { TaskSection } from './TaskSection'
 
 interface AgentDetailsProps {
   agent: Agent
@@ -151,6 +152,8 @@ export function AgentDetails({
             ))}
           </ul>
         </section>
+
+        <TaskSection agent={agent} onOpenConversation={onOpenConversation} />
 
         <section className="settings-section">
           <h2>Mémoire</h2>

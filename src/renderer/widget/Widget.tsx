@@ -15,11 +15,14 @@ export function Widget(): React.JSX.Element {
   const [dragging, setDragging] = useState(false)
   const [hovered, setHovered] = useState(false)
   const [avatar, setAvatar] = useState<AvatarConfig>(DEFAULT_AVATAR)
+  const [badge, setBadge] = useState(false)
 
   useEffect(() => {
     void window.toolbox.widget.getAvatar().then(setAvatar)
     return window.toolbox.widget.onAvatar(setAvatar)
   }, [])
+
+  useEffect(() => window.toolbox.widget.onBadge(setBadge), [])
 
   function onPointerDown(event: PointerEvent<HTMLButtonElement>): void {
     if (event.button !== 0) return
@@ -54,7 +57,7 @@ export function Widget(): React.JSX.Element {
     <button
       type="button"
       className={dragging ? 'widget dragging' : 'widget'}
-      aria-label="Ouvrir Agent Toolbox"
+      aria-label={badge ? 'Ouvrir Agent Toolbox : un résultat de tâche t’attend' : 'Ouvrir Agent Toolbox'}
       onPointerEnter={() => setHovered(true)}
       onPointerLeave={() => setHovered(false)}
       onPointerDown={onPointerDown}
@@ -62,7 +65,8 @@ export function Widget(): React.JSX.Element {
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerUp}
     >
-      <Avatar config={avatar} state={hovered && !dragging ? 'happy' : 'idle'} size={46} groundShadow={false} floating={false} />
+      <Avatar config={avatar} state={(hovered && !dragging) || badge ? 'happy' : 'idle'} size={46} groundShadow={false} floating={false} />
+      {badge && <span className="widget-badge" aria-hidden="true" />}
     </button>
   )
 }

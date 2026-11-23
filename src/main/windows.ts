@@ -145,7 +145,18 @@ function fadePanel(to: number, duration: number, done?: () => void): void {
   }, DRAG_INTERVAL_MS)
 }
 
+/** Pastille sur l'icône : un résultat de tâche attend. Elle s'efface à l'ouverture du panneau. */
+export function setWidgetBadge(visible: boolean): void {
+  if (!widget.isDestroyed()) widget.webContents.send(IPC.widgetBadge, visible)
+}
+
+/** Prévient le panneau qu'une tâche a changé d'état. */
+export function sendTasksChanged(): void {
+  if (!panel.isDestroyed()) panel.webContents.send(IPC.tasksChanged)
+}
+
 export function openPanel(requestedAt = Date.now()): void {
+  setWidgetBadge(false)
   stopFade()
   if (!panel.isVisible()) panel.setOpacity(0)
   const { corner } = getSettings().widget

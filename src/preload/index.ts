@@ -15,7 +15,8 @@ const api: ToolboxApi = {
     dragStart: () => ipcRenderer.send(IPC.widgetDragStart),
     dragEnd: () => ipcRenderer.send(IPC.widgetDragEnd),
     getAvatar: () => ipcRenderer.invoke(IPC.widgetGetAvatar),
-    onAvatar: (listener) => subscribe<AvatarConfig>(IPC.widgetAvatar, listener)
+    onAvatar: (listener) => subscribe<AvatarConfig>(IPC.widgetAvatar, listener),
+    onBadge: (listener) => subscribe<boolean>(IPC.widgetBadge, listener)
   },
   panel: {
     onState: (listener) => subscribe<PanelState>(IPC.panelState, listener),
@@ -82,6 +83,13 @@ const api: ToolboxApi = {
     list: () => ipcRenderer.invoke(IPC.connectorsList),
     save: (id, input) => ipcRenderer.invoke(IPC.connectorsSave, id, input),
     remove: (id) => ipcRenderer.invoke(IPC.connectorsRemove, id)
+  },
+  tasks: {
+    list: (agentId) => ipcRenderer.invoke(IPC.tasksList, agentId),
+    save: (id, input) => ipcRenderer.invoke(IPC.tasksSave, id, input),
+    remove: (id) => ipcRenderer.invoke(IPC.tasksRemove, id),
+    runNow: (id) => ipcRenderer.send(IPC.tasksRunNow, id),
+    onChanged: (listener) => subscribe<void>(IPC.tasksChanged, listener)
   },
   generateAgent: (description) => ipcRenderer.invoke(IPC.generateAgent, description),
   copyText: (text) => ipcRenderer.send(IPC.copyText, text)

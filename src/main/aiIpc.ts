@@ -5,17 +5,12 @@ import { AgentDraftSchema } from '../shared/agent'
 import type { ChatEvent } from '../shared/chat'
 import { ConnectorInputSchema, type Connector } from '../shared/connectors'
 import { IPC, PROVIDERS, type Result, type SaveKeyResult } from '../shared/ipc'
-import { buildSystemPrompt } from '../shared/systemPrompt'
-import type { Turn } from '../shared/conversation'
 import { prepareAttachments } from './ai/attachments'
-import { forgetApiSessions, sendMessage, resetSession, stopMessage } from './ai/chat'
+import { forgetApiSessions, stopMessage } from './ai/chat'
 import {
-  claudeResumeId,
   forgetClaudeSessions,
   generateViaClaudeCode,
   loginToSubscription,
-  resetClaudeCodeSession,
-  sendViaClaudeCode,
   stopViaClaudeCode,
   subscriptionStatus
 } from './ai/claudeCode'
@@ -23,25 +18,22 @@ import { createClient, resetClient } from './ai/client'
 import { classifyError } from './ai/errors'
 import { generateAgent } from './ai/generate'
 import { answerConfirmation } from './ai/toolBridge'
-import { listConnectors, removeConnector, resolveConnectors, saveConnector } from './store/connectors'
+import { listConnectors, removeConnector, saveConnector } from './store/connectors'
 import {
-  appendTurns,
+  allConversations,
   deleteConversation,
   getConversation,
   getFacts,
-  allConversations,
   listConversations,
-  rememberFacts,
-  setClaudeSession,
   setFacts,
   setPinned
 } from './store/conversations'
+import { cancelSession, runTurn, usesSubscription } from './turns'
 import { listAgents } from './store/agents'
 import { searchConversations } from '../shared/history'
 import { canStoreSecrets, deleteApiKey, readApiKey, writeApiKey } from './store/secrets'
 import { getSettings, updateSettings } from './store/settings'
 
-const usesSubscription = (): boolean => getSettings().provider === 'subscription'
 
 const SessionIdSchema = z.string().regex(/^[\w-]{1,100}$/)
 // Ces identifiants composent des chemins de fichiers : uniquement des UUID.
@@ -54,8 +46,6 @@ const DescriptionSchema = z.string().trim().min(1).max(2000)
 const KeySchema = z.string().trim().min(1).max(500)
 const FactsSchema = z.array(z.string().max(2000)).max(200)
 
-/** Tours en cours. Retirer une entrée rend muette la fin d'un tour annulé par une suppression. */
-const activeTurns = new Map<string, { agentId: string | null; visibleText: string; afterTool: boolean }>()
 
 /** Vérifie la clé avec un appel gratuit. Sans réseau, elle est gardée mais signalée comme non vérifiée. */
 async function saveKey(raw: unknown): Promise<Result<SaveKeyResult>> {
@@ -87,92 +77,21 @@ function startTurn(
   textRaw: unknown,
   attachmentsRaw: unknown
 ): void {
-  if (activeTurns.has(sessionId)) return
+  const deliver = (event: ChatEvent): void => {
+    if (!sender.isDestroyed()) sender.send(IPC.chatEvent, event)
+  }
   const draft = AgentDraftSchema.parse(agentRaw)
   const prepared = prepareAttachments(attachmentsRaw)
   if (!prepared.ok) {
-    const event: ChatEvent = { sessionId, type: 'error', failure: { code: 'bad_request', message: prepared.message } }
-    if (!sender.isDestroyed()) sender.send(IPC.chatEvent, event)
+    deliver({ sessionId, type: 'error', failure: { code: 'bad_request', message: prepared.message } })
     return
   }
   const attachments = prepared.value
   const text = attachments.length > 0 ? OptionalTextSchema.parse(textRaw) : TextSchema.parse(textRaw)
-  const metas = attachments.map((attachment) => attachment.meta)
-  const userTurn: Turn = metas.length > 0 ? { role: 'user', text, attachments: metas } : { role: 'user', text }
   // `null` : essai depuis l'assistant, dont rien n'est conservé.
   const agentId = agentIdRaw === null ? null : AgentIdSchema.parse(agentIdRaw)
   if (agentId) ConversationIdSchema.parse(sessionId)
-
-  const conversation = agentId ? getConversation(agentId, sessionId) : null
-  const facts = agentId ? getFacts(agentId) : []
-  const wanted = resolveConnectors(draft.tools.connectors)
-  // L'API exécuterait les actions de ses connecteurs sans passer par une confirmation.
-  const connectors = usesSubscription() ? wanted : []
-  const context = {
-    systemPrompt: buildSystemPrompt(draft, facts, { remember: agentId !== null, connectors: connectors.map((c) => c.name) }),
-    turns: conversation?.messages ?? [],
-    resumeId: conversation?.claudeSessionId ?? null,
-    connectors
-  }
-
-  const turn = { agentId, visibleText: '', afterTool: false }
-  activeTurns.set(sessionId, turn)
-  const resumeIdToKeep = (): string | null => (usesSubscription() ? claudeResumeId(sessionId) : null)
-
-  const emit = (event: ChatEvent): void => {
-    if (activeTurns.get(sessionId) !== turn) return
-    let outgoing = event
-    if (event.type === 'tool') {
-      turn.afterTool = true
-    } else if (event.type === 'confirm' || event.type === 'confirmed' || event.type === 'notice') {
-      // Le tour continue : ces événements informent seulement l'interface.
-    } else if (event.type === 'delta') {
-      // Le texte qui suit un outil ne doit pas se coller à la phrase qui l'annonçait.
-      const text = turn.afterTool && turn.visibleText ? `\n\n${event.text}` : event.text
-      turn.afterTool = false
-      turn.visibleText += text
-      outgoing = { ...event, text }
-    } else {
-      activeTurns.delete(sessionId)
-      if (agentId) {
-        if (event.type === 'done') {
-          appendTurns(
-            agentId,
-            sessionId,
-            [userTurn, { role: 'assistant', text: turn.visibleText.trim() }],
-            resumeIdToKeep()
-          )
-          outgoing = { ...event, facts: rememberFacts(agentId, event.facts) }
-        } else if (event.type === 'stopped') {
-          const partial = turn.visibleText.trim()
-          appendTurns(
-            agentId,
-            sessionId,
-            [userTurn, ...(partial ? [{ role: 'assistant' as const, text: partial }] : [])],
-            null
-          )
-        } else {
-          setClaudeSession(agentId, sessionId, null)
-        }
-      } else if (event.type === 'done') {
-        outgoing = { ...event, facts: [] }
-      }
-    }
-    if (!sender.isDestroyed()) sender.send(IPC.chatEvent, outgoing)
-  }
-
-  if (wanted.length > connectors.length) {
-    emit({ sessionId, type: 'notice', text: "Les connecteurs sont désactivés en mode clé API, faute de pouvoir y demander ta confirmation. Repasse sur ton abonnement pour t'en servir." })
-  }
-  const message = { text, attachments }
-  if (usesSubscription()) sendViaClaudeCode(sessionId, draft, message, emit, context)
-  else void sendMessage(sessionId, draft, message, emit, context)
-}
-
-function cancelSession(sessionId: string): void {
-  activeTurns.delete(sessionId)
-  resetClaudeCodeSession(sessionId)
-  resetSession(sessionId)
+  runTurn({ sessionId, agentId, draft, text, attachments }, deliver)
 }
 
 export function registerAiIpc(): void {

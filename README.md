@@ -56,10 +56,13 @@ Le mode abonnement est prévu pour un usage personnel, sur ton propre Mac : Anth
 | Voir l'historique et la mémoire | **☰**, en haut du chat |
 | Retrouver une conversation | Taper un mot dans la recherche de la galerie : les conversations qui le contiennent s'affichent sous les agents |
 | Épingler ou exporter une conversation | **☰**, puis l'épingle (elle reste en tête) ou la flèche (fichier Markdown) |
+| Programmer une tâche | **☰**, section **Tâches programmées** : un nom, une consigne, des jours et une heure. Le résultat arrive dans une conversation, avec une notification et une pastille sur l'icône |
 | Sauvegarder ou partager des agents | **⚙** pour tous, **⋯** sur une carte pour un seul |
 | Lancer au démarrage | **⚙**, ou le menu de l'icône dans la barre de menus |
 
 L'historique garde le nom des pièces jointes, jamais leur contenu.
+
+Les tâches programmées tournent tant que le Mac est allumé et l'app ouverte. Une tâche manquée (Mac éteint ou en veille) est exécutée une fois, dès le retour. Elles n'utilisent pas les connecteurs, dont les actions demandent ta confirmation.
 
 Avec l’app installée, le lancement au démarrage passe par l’option « Ouvrir à la connexion » de macOS. En mode développement, il lance la version buildée du projet : après une mise à jour du code, relance `npm run build`.
 
