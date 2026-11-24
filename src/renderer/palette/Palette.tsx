@@ -5,6 +5,7 @@ import { activityLabel } from '../../shared/tools'
 import { Avatar, AvatarPausedContext } from '../avatar/Avatar'
 import { ActionCard } from '../panel/chat/ActionCard'
 import { MessageBubble } from '../panel/chat/MessageBubble'
+import { WorkingLine } from '../panel/chat/WorkingLine'
 import {
   forgetChatSession,
   retryChatMessage,
@@ -36,6 +37,8 @@ export function Palette(): React.JSX.Element {
   const chat = useChatSession(session?.id ?? NO_SESSION)
   const hasThread = session !== null && (chat.messages.length > 0 || chat.failure !== null)
   const lastAnswer = chat.messages.findLast((message) => message.role === 'assistant')?.text ?? ''
+  const [busySince, setBusySince] = useState<number | null>(null)
+  useEffect(() => setBusySince(chat.busy ? Date.now() : null), [chat.busy])
   const avatarState: AvatarState = chat.busy ? 'thinking' : input.trim() ? 'listening' : chat.mood
 
   // À chaque ouverture : agents à jour, sélection conservée, champ prêt à écrire.
@@ -158,7 +161,7 @@ export function Palette(): React.JSX.Element {
   return (
     // Palette cachée : plus de clignement d'yeux, donc plus de rendu inutile.
     <AvatarPausedContext.Provider value={!open}>
-    <div ref={root} className="palette">
+    <div ref={root} className={open ? 'palette' : 'palette palette-closed'}>
       <div className="palette-input">
         {agent && <Avatar config={agent.avatar} state={avatarState} size={40} groundShadow={false} floating={false} />}
         <textarea
@@ -204,9 +207,9 @@ export function Palette(): React.JSX.Element {
             {chat.actions.map((action) => (
               <ActionCard key={action.id} action={action} agentName={agent.name} onAnswer={(approved) => window.toolbox.chat.confirm(action.id, approved)} />
             ))}
-            {chat.busy && chat.activity && <p className="chat-waiting">{activityLabel(agent.name, chat.activity)}</p>}
+            {chat.busy && chat.activity && <WorkingLine text={activityLabel(agent.name, chat.activity)} since={busySince ?? undefined} />}
             {chat.busy && !chat.activity && chat.messages.at(-1)?.role === 'user' && (
-              <p className="chat-waiting">{agent.name} réfléchit…</p>
+              <WorkingLine text={`${agent.name} réfléchit…`} since={busySince ?? undefined} />
             )}
             {chat.notice && <p className="chat-notice">{chat.notice}</p>}
             {chat.failure && session && (

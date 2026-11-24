@@ -7,18 +7,43 @@ import { Avatar } from '../../avatar/Avatar'
 import { MessageBubble } from '../chat/MessageBubble'
 import { TeamAvatars } from './TeamsList'
 import { activityLabel } from '../../../shared/tools'
-import { formatElapsed, type MemberStatus, type TeamRun } from './teamState'
+import { useNow, WorkingLine } from '../chat/WorkingLine'
+import { formatElapsed, teamSteps, type MemberStatus, type TeamRun } from './teamState'
 import { loadTeamConversation, startTeamRun, useTeamRuns } from './teamStore'
 
-/** Heure courante, rafraîchie chaque seconde seulement pendant un travail en cours. */
-function useNow(active: boolean): number {
-  const [now, setNow] = useState(Date.now)
-  useEffect(() => {
-    if (!active) return
-    const timer = setInterval(() => setNow(Date.now()), 1000)
-    return () => clearInterval(timer)
-  }, [active])
-  return now
+interface TeamProgressProps {
+  run: TeamRun
+  chiefName: string
+  nameOf(agentId: string): string
+  elapsed: string
+}
+
+/** Barre de progression d'une demande : un segment par étape, l'étape en cours scintille. */
+function TeamProgress({ run, chiefName, nameOf, elapsed }: TeamProgressProps): React.JSX.Element {
+  const steps = teamSteps(run, chiefName, nameOf)
+  const currentIndex = steps.findIndex((step) => step.state === 'current')
+  const current = steps[currentIndex]
+  return (
+    <div className="team-progress" role="progressbar" aria-valuemin={0} aria-valuemax={steps.length} aria-valuenow={Math.max(currentIndex, 0)}>
+      <p className="team-progress-label">
+        <span>
+          {current ? (
+            <>
+              Étape {currentIndex + 1} sur {steps.length} · <strong>{current.label}</strong>
+            </>
+          ) : (
+            'Travail interrompu'
+          )}
+        </span>
+        {current && <span className="working-time">{elapsed}</span>}
+      </p>
+      <div className="team-progress-track">
+        {steps.map((step) => (
+          <span key={step.key} className={`team-progress-step is-${step.state}`} title={step.label} />
+        ))}
+      </div>
+    </div>
+  )
 }
 
 const REMARK_PLUGINS = [remarkGfm]
@@ -65,6 +90,7 @@ export function TeamChat({
   const running = runs.at(-1)?.status === 'running'
   const now = useNow(running)
   const since = (run: TeamRun): string => (run.stepStartedAt ? ` · ${formatElapsed(now - run.stepStartedAt)}` : '')
+  const elapsed = (run: TeamRun): string => (run.stepStartedAt ? formatElapsed(now - run.stepStartedAt) : '')
   const doing = (run: TeamRun, agentId: string, name: string): string | null => {
     const activity = run.activity?.[agentId]
     return activity ? activityLabel(name, activity) : null
@@ -159,12 +185,15 @@ export function TeamChat({
           <section key={run.id} className="team-run">
             {run.scheduled && <p className="team-scheduled">Tâche programmée</p>}
             <MessageBubble role="user" text={run.request} />
+            {run.status === 'running' && (
+              <TeamProgress run={run} chiefName={chief?.name ?? 'Le chef'} nameOf={(agentId) => nameOf(run, agentId)} elapsed={elapsed(run)} />
+            )}
             <div className="team-plan">
               <p className="team-plan-title">
                 {chief && <Avatar config={chief.avatar} size={22} groundShadow={false} floating={false} />}
-                {run.phase === 'plan' && run.status === 'running'
-                  ? `${chief?.name ?? 'Le chef'} répartit le travail…${since(run)}`
-                  : run.assignments.length > 0
+                {run.phase === 'plan' && run.status === 'running' ? (
+                  <WorkingLine text={`${chief?.name ?? 'Le chef'} répartit le travail`} bar={false} />
+                ) : run.assignments.length > 0
                     ? 'Travail confié :'
                     : `${chief?.name ?? 'Le chef'} a répondu seul.`}
               </p>
@@ -181,8 +210,19 @@ export function TeamChat({
                             <span className="team-assignment-head">
                               <strong>{nameOf(run, assignment.agentId)}</strong>
                               <span className="team-status">
-                                {STATUS_LABELS[output?.status ?? 'waiting']}
-                                {output?.status === 'working' && run.status === 'running' ? since(run) : ''}
+                                {output?.status === 'working' && run.status === 'running' ? (
+                                  <>
+                                    au travail
+                                    <span className="working-dots" aria-hidden="true">
+                                      <i />
+                                      <i />
+                                      <i />
+                                    </span>
+                                    {since(run)}
+                                  </>
+                                ) : (
+                                  STATUS_LABELS[output?.status ?? 'waiting']
+                                )}
                               </span>
                             </span>
                           </summary>
@@ -204,10 +244,7 @@ export function TeamChat({
               )}
             </div>
             {run.phase === 'synthesis' && run.status === 'running' && !run.answer && (
-              <p className="chat-waiting">
-                {(chief && doing(run, chief.id, chief.name)) ?? `${chief?.name ?? 'Le chef'} rédige la réponse de l'équipe…`}
-                {since(run)}
-              </p>
+              <WorkingLine text={(chief && doing(run, chief.id, chief.name)) ?? `${chief?.name ?? 'Le chef'} rédige la réponse de l'équipe`} />
             )}
             {run.answer && <MessageBubble role="assistant" text={run.answer} />}
             {run.status === 'error' && (

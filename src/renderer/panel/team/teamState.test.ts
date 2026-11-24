@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { applyTeamEvent, formatElapsed, newRun, runFromRecord } from './teamState'
+import { applyTeamEvent, formatElapsed, newRun, runFromRecord, teamSteps } from './teamState'
 
 const id = 'c'
 
@@ -73,5 +73,37 @@ describe('signes de vie', () => {
       1
     )
     expect(run).toMatchObject({ status: 'error', error: 'Limite atteinte' })
+  })
+})
+
+describe('teamSteps', () => {
+  const name = (agentId: string): string => ({ p: 'Plume', r: 'Riff' })[agentId] ?? '?'
+
+  it('avant la répartition : la répartition en cours, le reste à venir', () => {
+    const steps = teamSteps(newRun(1, 'x'), 'Vigie', name)
+    expect(steps.map((step) => step.state)).toEqual(['current', 'pending', 'pending'])
+    expect(steps[0]!.label).toBe('Vigie répartit le travail')
+  })
+
+  it('suit les membres un par un, puis la réponse', () => {
+    let run = applyTeamEvent(newRun(1, 'x'), { conversationId: id, type: 'plan', assignments: [{ agentId: 'p', task: 'a' }, { agentId: 'r', task: 'b' }] })
+    run = applyTeamEvent(run, { conversationId: id, type: 'member-start', agentId: 'p' })
+    expect(teamSteps(run, 'Vigie', name).map((step) => step.state)).toEqual(['done', 'current', 'pending', 'pending'])
+    run = applyTeamEvent(run, { conversationId: id, type: 'member-done', agentId: 'p' })
+    run = applyTeamEvent(run, { conversationId: id, type: 'member-start', agentId: 'r' })
+    run = applyTeamEvent(run, { conversationId: id, type: 'member-done', agentId: 'r', problem: 'Limite' })
+    run = applyTeamEvent(run, { conversationId: id, type: 'phase', phase: 'synthesis' })
+    const steps = teamSteps(run, 'Vigie', name)
+    expect(steps.map((step) => step.state)).toEqual(['done', 'done', 'failed', 'current'])
+    expect(steps[2]!.label).toBe('Riff travaille')
+    run = applyTeamEvent(run, { conversationId: id, type: 'done', answer: 'ok' })
+    expect(teamSteps(run, 'Vigie', name).at(-1)!.state).toBe('done')
+  })
+
+  it("marque l'étape interrompue", () => {
+    let run = applyTeamEvent(newRun(1, 'x'), { conversationId: id, type: 'plan', assignments: [{ agentId: 'p', task: 'a' }] })
+    run = applyTeamEvent(run, { conversationId: id, type: 'member-start', agentId: 'p' })
+    run = applyTeamEvent(run, { conversationId: id, type: 'stopped' })
+    expect(teamSteps(run, 'Vigie', name).map((step) => step.state)).toEqual(['done', 'failed', 'pending'])
   })
 })

@@ -8,6 +8,7 @@ import { ActionCard } from './ActionCard'
 import { PaperclipIcon } from '../icons'
 import { AttachmentList } from './AttachmentList'
 import { MessageBubble } from './MessageBubble'
+import { WorkingLine } from './WorkingLine'
 import {
   loadChatSession,
   retryChatMessage,
@@ -63,6 +64,10 @@ export function ChatView({
   const dragDepth = useRef(0)
   const scroller = useRef<HTMLDivElement>(null)
   const stuckToBottom = useRef(true)
+
+  // Début de l'attente, pour afficher le temps écoulé pendant la réflexion.
+  const [busySince, setBusySince] = useState<number | null>(null)
+  useEffect(() => setBusySince(chat.busy ? Date.now() : null), [chat.busy])
 
   const avatarState: AvatarState = chat.busy ? 'thinking' : input.trim() || pending.length > 0 ? 'listening' : chat.mood
 
@@ -206,9 +211,9 @@ export function ChatView({
         ))}
         {chat.busy && chat.actions.some((action) => !action.outcome) ? null : (
           <>
-            {chat.busy && chat.activity && <p className="chat-waiting">{activityLabel(agent.name, chat.activity)}</p>}
+            {chat.busy && chat.activity && <WorkingLine text={activityLabel(agent.name, chat.activity)} since={busySince ?? undefined} />}
             {chat.busy && !chat.activity && chat.messages.at(-1)?.role === 'user' && (
-              <p className="chat-waiting">{agent.name} réfléchit…</p>
+              <WorkingLine text={`${agent.name} réfléchit…`} since={busySince ?? undefined} />
             )}
           </>
         )}

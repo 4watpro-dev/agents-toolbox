@@ -118,3 +118,8 @@ body,
   padding: 20px 16px;
   color: var(--muted);
 }
+
+/* Palette cachée : plus aucune animation ne tourne. */
+.palette-closed * {
+  animation-play-state: paused !important;
+}

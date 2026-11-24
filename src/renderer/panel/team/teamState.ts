@@ -98,3 +98,42 @@ export function formatElapsed(ms: number): string {
   if (seconds < 60) return `${seconds} s`
   return `${Math.floor(seconds / 60)} min ${String(seconds % 60).padStart(2, '0')}`
 }
+
+export type StepState = 'done' | 'current' | 'pending' | 'failed'
+
+export interface TeamStep {
+  key: string
+  label: string
+  state: StepState
+}
+
+/**
+ * Étapes d'une demande pour la barre de progression : la répartition, chaque
+ * membre sollicité, puis la réponse. Avant la répartition, on ne sait pas encore
+ * combien de membres travailleront : une seule étape « équipe » les représente.
+ */
+export function teamSteps(run: TeamRun, chiefName: string, nameOf: (agentId: string) => string): TeamStep[] {
+  const finished = run.status !== 'running'
+  const failed = run.status === 'error' || run.status === 'stopped'
+  const planned = run.phase !== 'plan'
+  const steps: TeamStep[] = [
+    { key: 'plan', label: `${chiefName} répartit le travail`, state: planned ? 'done' : failed ? 'failed' : 'current' }
+  ]
+  if (!planned) {
+    steps.push({ key: 'members', label: "L'équipe travaille", state: 'pending' })
+  } else {
+    for (const assignment of run.assignments) {
+      const output = run.outputs[assignment.agentId]
+      const state: StepState =
+        output?.status === 'done' ? 'done' : output?.status === 'error' ? 'failed' : output?.status === 'working' ? (failed ? 'failed' : 'current') : 'pending'
+      steps.push({ key: assignment.agentId, label: `${nameOf(assignment.agentId)} travaille`, state })
+    }
+  }
+  const writing = run.phase === 'synthesis'
+  steps.push({
+    key: 'answer',
+    label: `${chiefName} rédige la réponse`,
+    state: run.status === 'done' ? 'done' : writing ? (finished ? 'failed' : 'current') : 'pending'
+  })
+  return steps
+}

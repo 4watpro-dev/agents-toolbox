@@ -1908,3 +1908,154 @@ textarea.input {
   color: var(--accent);
   font-size: 12px;
 }
+
+/* Attente animée : transformations et opacité seulement (pas de redessin), et
+   uniquement pendant un travail. Panneau caché : tout est mis en pause. */
+.working {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.working-line {
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+}
+
+.working-dots {
+  display: inline-flex;
+  gap: 3px;
+  margin-left: 2px;
+}
+
+.working-dots i {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: working-dot 1.2s ease-in-out infinite;
+}
+
+.working-dots i:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.working-dots i:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes working-dot {
+  0%,
+  60%,
+  100% {
+    opacity: 0.25;
+    transform: translateY(0);
+  }
+  30% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+
+.working-time {
+  margin-left: 8px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.working-bar {
+  position: relative;
+  display: block;
+  width: 100%;
+  max-width: 240px;
+  height: 3px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--surface-2);
+}
+
+.working-bar i {
+  position: absolute;
+  inset: 0;
+  width: 40%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  animation: working-sweep 1.6s ease-in-out infinite;
+  will-change: transform;
+}
+
+@keyframes working-sweep {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(250%);
+  }
+}
+
+/* Barre de progression d'une équipe : un segment par étape. */
+.team-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.team-progress-label {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 11.5px;
+}
+
+.team-progress-label strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.team-progress-track {
+  display: flex;
+  gap: 3px;
+}
+
+.team-progress-step {
+  position: relative;
+  flex: 1;
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--surface-2);
+}
+
+.team-progress-step.is-done {
+  background: var(--accent);
+}
+
+.team-progress-step.is-failed {
+  background: var(--danger);
+}
+
+.team-progress-step.is-current::after {
+  position: absolute;
+  inset: 0;
+  width: 50%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  content: '';
+  animation: working-sweep 1.4s ease-in-out infinite;
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .working-dots i,
+  .working-bar i,
+  .team-progress-step.is-current::after {
+    animation: none;
+  }
+
+  .working-dots i {
+    opacity: 0.7;
+  }
+}
