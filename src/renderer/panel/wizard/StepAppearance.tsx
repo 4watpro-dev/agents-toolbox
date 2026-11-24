@@ -9,6 +9,7 @@ import {
 } from '../../../shared/avatar'
 import { Avatar } from '../../avatar/Avatar'
 import { ACCESSORY_LABELS, EYE_LABELS, SHAPE_LABELS } from '../../avatar/labels'
+import { ColorPicker } from './ColorPicker'
 import { Options, type StepProps } from './fields'
 
 const BODY_SWATCHES = ['#5be370', '#c8f031', '#6fb4ff', '#a98bff', '#ff85b8', '#ff9f57']
@@ -33,6 +34,8 @@ interface ColorRowProps {
 }
 
 function ColorRow({ label, swatches, value, onChange }: ColorRowProps): React.JSX.Element {
+  const [custom, setCustom] = useState(false)
+  const isCustom = !swatches.includes(value)
   return (
     <fieldset className="options">
       <legend className="field-label">{label}</legend>
@@ -48,14 +51,18 @@ function ColorRow({ label, swatches, value, onChange }: ColorRowProps): React.JS
             onClick={() => onChange(color)}
           />
         ))}
-        <input
-          type="color"
-          className="swatch-custom"
+        <button
+          type="button"
+          className="swatch swatch-custom"
+          style={isCustom ? { background: value } : undefined}
           aria-label={`${label} : couleur personnalisée`}
-          value={value}
-          onChange={(event) => onChange(event.target.value)}
+          aria-expanded={custom}
+          aria-pressed={isCustom}
+          title="Couleur personnalisée"
+          onClick={() => setCustom(!custom)}
         />
       </div>
+      {custom && <ColorPicker label={label} value={value} onChange={onChange} />}
     </fieldset>
   )
 }
