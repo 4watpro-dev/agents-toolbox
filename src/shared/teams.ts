@@ -37,7 +37,10 @@ export const TeamRunRecordSchema = z.object({
   answer: z.string(),
   at: z.string(),
   /** Demande lancée par une tâche programmée. */
-  scheduled: z.boolean().default(false)
+  scheduled: z.boolean().default(false),
+  /** Une demande échouée ou arrêtée est gardée aussi, avec ce qui avait été fait. */
+  status: z.enum(['done', 'error', 'stopped']).default('done'),
+  error: z.string().nullable().default(null)
 })
 
 export const TeamConversationSchema = z.object({
@@ -62,7 +65,7 @@ export interface TeamConversationSummary {
 
 /** Dernier échange réussi, donné au chef pour une question de suite. */
 export function previousFromRuns(runs: TeamRunRecord[]): string | null {
-  const last = runs.at(-1)
+  const last = runs.findLast((run) => run.status === 'done')
   return last ? `La personne : ${last.request}\n\nRéponse de l'équipe : ${last.answer}` : null
 }
 

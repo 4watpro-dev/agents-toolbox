@@ -1902,3 +1902,9 @@ textarea.input {
   color: var(--accent);
   font-size: 11px;
 }
+
+.team-doing {
+  margin: 4px 0 0 30px;
+  color: var(--accent);
+  font-size: 12px;
+}

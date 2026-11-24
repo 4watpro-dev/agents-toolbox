@@ -30,7 +30,7 @@ export function onTasksChanged(listener: () => void): void {
   onChange = listener
 }
 
-function notify(
+export function notify(
   title: string,
   body: string,
   open?: { agentId: string; conversationId: string } | { teamId: string; conversationId: string }
@@ -45,7 +45,7 @@ function notify(
   notification.show()
 }
 
-function preview(text: string): string {
+export function preview(text: string): string {
   const flat = text.replace(/[#*_`>]/g, '').replace(/\s+/g, ' ').trim()
   return flat.length > PREVIEW_LENGTH ? `${flat.slice(0, PREVIEW_LENGTH - 1)}…` : flat
 }

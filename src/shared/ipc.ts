@@ -9,6 +9,7 @@ import type { Connector, ConnectorInput } from './connectors'
 import type { Conversation, ConversationSummary } from './conversation'
 import type { SearchHit } from './history'
 import type { Task, TaskInput } from './schedule'
+import type { ToolActivity } from './tools'
 import type { Assignment } from './team'
 import type { Team, TeamConversation, TeamConversationSummary, TeamInput } from './teams'
 
@@ -144,6 +145,8 @@ export type TeamEvent = { conversationId: string } & (
   | { type: 'member-start'; agentId: string }
   | { type: 'member-delta'; agentId: string; text: string }
   | { type: 'member-done'; agentId: string; problem?: string }
+  /** Ce que fait un agent de l'équipe en ce moment (recherche web, lecture de documents). */
+  | { type: 'activity'; agentId: string; activity: ToolActivity }
   | { type: 'delta'; text: string }
   | { type: 'done'; answer: string }
   | { type: 'stopped' }

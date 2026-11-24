@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import type { Team, TeamConversationSummary } from '../../../shared/teams'
 import { TrashIcon } from '../icons'
 import { TaskSection } from '../TaskSection'
+import { forgetTeamConversation } from './teamStore'
 
 interface TeamDetailsProps {
   team: Team
@@ -32,6 +33,7 @@ export function TeamDetails({ team, currentConversationId, onBack, onOpenConvers
   async function remove(id: string): Promise<void> {
     setConfirmingId(null)
     await window.toolbox.team.removeConversation(team.id, id)
+    forgetTeamConversation(id)
     refresh()
     if (id === currentConversationId) onNewConversation()
   }

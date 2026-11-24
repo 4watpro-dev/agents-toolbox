@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { applyTeamEvent, newRun, runFromRecord } from './teamState'
+import { applyTeamEvent, formatElapsed, newRun, runFromRecord } from './teamState'
 
 const id = 'c'
 
@@ -38,7 +38,9 @@ describe('runFromRecord', () => {
         ],
         answer: 'Final',
         at: '2026-11-01T10:00:00.000Z',
-        scheduled: true
+        scheduled: true,
+        status: 'done',
+        error: null
       },
       1
     )
@@ -47,5 +49,29 @@ describe('runFromRecord', () => {
     expect(run.outputs['p']).toMatchObject({ status: 'error', problem: 'Limite atteinte' })
     expect(run.names).toEqual({ r: 'Riff', p: 'Plume' })
     expect(run.scheduled).toBe(true)
+  })
+})
+
+describe('signes de vie', () => {
+  it("note l'activité d'un agent et l'oublie quand il a fini", () => {
+    let run = applyTeamEvent(newRun(1, 'x', 0), { conversationId: id, type: 'member-start', agentId: 'p' }, 5000)
+    expect(run.stepStartedAt).toBe(5000)
+    run = applyTeamEvent(run, { conversationId: id, type: 'activity', agentId: 'p', activity: { kind: 'search', query: 'fail2ban' } })
+    expect(run.activity?.['p']).toEqual({ kind: 'search', query: 'fail2ban' })
+    run = applyTeamEvent(run, { conversationId: id, type: 'member-done', agentId: 'p' })
+    expect(run.activity?.['p']).toBeUndefined()
+  })
+
+  it('affiche le temps écoulé simplement', () => {
+    expect(formatElapsed(45_000)).toBe('45 s')
+    expect(formatElapsed(125_000)).toBe('2 min 05')
+  })
+
+  it('rouvre une demande échouée avec son erreur', () => {
+    const run = runFromRecord(
+      { request: 'x', chiefName: 'Vigie', work: [], answer: '', at: '2026-11-24T10:00:00.000Z', scheduled: false, status: 'error', error: 'Limite atteinte' },
+      1
+    )
+    expect(run).toMatchObject({ status: 'error', error: 'Limite atteinte' })
   })
 })

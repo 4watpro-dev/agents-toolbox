@@ -54,7 +54,9 @@ describe('historique', () => {
         work: [{ agentId: B, name: 'Riff', task: 'Écris-le', text: 'Le jazz respire', problem: null }],
         answer: 'Slogan : Le jazz respire',
         at: '2026-11-01T10:00:00.000Z',
-        scheduled: false
+        scheduled: false,
+        status: 'done',
+        error: null
       }
     ],
     createdAt: '2026-11-01T10:00:00.000Z',

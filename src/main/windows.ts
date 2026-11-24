@@ -145,6 +145,10 @@ function fadePanel(to: number, duration: number, done?: () => void): void {
   }, DRAG_INTERVAL_MS)
 }
 
+export function isPanelOpen(): boolean {
+  return panelOpen
+}
+
 /** Pastille sur l'icône : un résultat de tâche attend. Elle s'efface à l'ouverture du panneau. */
 export function setWidgetBadge(visible: boolean): void {
   if (!widget.isDestroyed()) widget.webContents.send(IPC.widgetBadge, visible)

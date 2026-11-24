@@ -6,7 +6,20 @@ import { teamReady, type Team } from '../../../shared/teams'
 import { Avatar } from '../../avatar/Avatar'
 import { MessageBubble } from '../chat/MessageBubble'
 import { TeamAvatars } from './TeamsList'
-import { applyTeamEvent, newRun, runFromRecord, type MemberStatus, type TeamRun } from './teamState'
+import { activityLabel } from '../../../shared/tools'
+import { formatElapsed, type MemberStatus, type TeamRun } from './teamState'
+import { loadTeamConversation, startTeamRun, useTeamRuns } from './teamStore'
+
+/** Heure courante, rafraîchie chaque seconde seulement pendant un travail en cours. */
+function useNow(active: boolean): number {
+  const [now, setNow] = useState(Date.now)
+  useEffect(() => {
+    if (!active) return
+    const timer = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(timer)
+  }, [active])
+  return now
+}
 
 const REMARK_PLUGINS = [remarkGfm]
 
@@ -41,7 +54,7 @@ export function TeamChat({
   onEdit,
   onOpenChiefConversation
 }: TeamChatProps): React.JSX.Element {
-  const [runs, setRuns] = useState<TeamRun[]>([])
+  const runs = useTeamRuns(conversationId)
   const [input, setInput] = useState('')
   const [copyError, setCopyError] = useState<string | null>(null)
   const field = useRef<HTMLTextAreaElement>(null)
@@ -50,35 +63,22 @@ export function TeamChat({
   const chief = agents.find((agent) => agent.id === team.chiefId) ?? null
   const ready = teamReady(team, agents.map((agent) => agent.id))
   const running = runs.at(-1)?.status === 'running'
+  const now = useNow(running)
+  const since = (run: TeamRun): string => (run.stepStartedAt ? ` · ${formatElapsed(now - run.stepStartedAt)}` : '')
+  const doing = (run: TeamRun, agentId: string, name: string): string | null => {
+    const activity = run.activity?.[agentId]
+    return activity ? activityLabel(name, activity) : null
+  }
   const nameOf = (run: TeamRun, id: string): string => agents.find((agent) => agent.id === id)?.name ?? run.names?.[id] ?? 'Un membre'
 
-  // Conversation rouverte depuis l'historique : ses demandes s'affichent terminées.
+  // Conversation rouverte : depuis l'historique, ou en cours de travail si on revient pendant qu'elle tourne.
   useEffect(() => {
-    let current = true
-    setRuns([])
-    void window.toolbox.team.conversation(team.id, conversationId).then((conversation) => {
-      if (current && conversation) setRuns(conversation.runs.map((record, index) => runFromRecord(record, index + 1)))
-    })
-    return () => {
-      current = false
-    }
+    void loadTeamConversation(team.id, conversationId)
   }, [team.id, conversationId])
 
   useEffect(() => {
     if (panelOpen) field.current?.focus()
   }, [panelOpen, conversationId])
-
-  useEffect(
-    () =>
-      window.toolbox.team.onEvent((event) => {
-        if (event.conversationId !== conversationId) return
-        setRuns((current) => {
-          const last = current.at(-1)
-          return last?.status === 'running' ? [...current.slice(0, -1), applyTeamEvent(last, event)] : current
-        })
-      }),
-    [conversationId]
-  )
 
   useEffect(() => {
     const element = thread.current
@@ -88,9 +88,8 @@ export function TeamChat({
   function send(): void {
     const text = input.trim()
     if (!text || !ready || running) return
-    setRuns((current) => [...current, newRun(current.length + 1, text)])
     setInput('')
-    window.toolbox.team.run(team.id, conversationId, text)
+    startTeamRun(team.id, conversationId, text)
   }
 
   async function continueWithChief(): Promise<void> {
@@ -164,7 +163,7 @@ export function TeamChat({
               <p className="team-plan-title">
                 {chief && <Avatar config={chief.avatar} size={22} groundShadow={false} floating={false} />}
                 {run.phase === 'plan' && run.status === 'running'
-                  ? `${chief?.name ?? 'Le chef'} répartit le travail…`
+                  ? `${chief?.name ?? 'Le chef'} répartit le travail…${since(run)}`
                   : run.assignments.length > 0
                     ? 'Travail confié :'
                     : `${chief?.name ?? 'Le chef'} a répondu seul.`}
@@ -181,10 +180,16 @@ export function TeamChat({
                             {agent && <Avatar config={agent.avatar} size={22} groundShadow={false} floating={false} />}
                             <span className="team-assignment-head">
                               <strong>{nameOf(run, assignment.agentId)}</strong>
-                              <span className="team-status">{STATUS_LABELS[output?.status ?? 'waiting']}</span>
+                              <span className="team-status">
+                                {STATUS_LABELS[output?.status ?? 'waiting']}
+                                {output?.status === 'working' && run.status === 'running' ? since(run) : ''}
+                              </span>
                             </span>
                           </summary>
                           <p className="team-task">{assignment.task}</p>
+                          {output?.status === 'working' && doing(run, assignment.agentId, nameOf(run, assignment.agentId)) && (
+                            <p className="team-doing">{doing(run, assignment.agentId, nameOf(run, assignment.agentId))}</p>
+                          )}
                           {output?.problem && <p className="form-error">{output.problem}</p>}
                           {output?.text && (
                             <div className="team-output">
@@ -199,12 +204,15 @@ export function TeamChat({
               )}
             </div>
             {run.phase === 'synthesis' && run.status === 'running' && !run.answer && (
-              <p className="chat-waiting">{chief?.name ?? 'Le chef'} rédige la réponse de l'équipe…</p>
+              <p className="chat-waiting">
+                {(chief && doing(run, chief.id, chief.name)) ?? `${chief?.name ?? 'Le chef'} rédige la réponse de l'équipe…`}
+                {since(run)}
+              </p>
             )}
             {run.answer && <MessageBubble role="assistant" text={run.answer} />}
             {run.status === 'error' && (
               <p className="form-error" role="alert">
-                {run.error}
+                Échec : {run.error}
               </p>
             )}
             {run.status === 'stopped' && <p className="chat-notice">Travail d'équipe interrompu.</p>}

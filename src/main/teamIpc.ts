@@ -16,7 +16,8 @@ import {
   saveTeam
 } from './store/teams'
 import { runTeam, stopTeam } from './team'
-import { sendTasksChanged } from './windows'
+import { notify, preview } from './scheduler'
+import { isPanelOpen, sendTasksChanged, setWidgetBadge } from './windows'
 
 const IdSchema = z.uuid()
 const TextSchema = z.string().trim().min(1).max(20_000)
@@ -58,7 +59,7 @@ export function registerTeamIpc(): void {
   )
   ipcMain.handle(IPC.teamConversationsDelete, (_event, teamId: unknown, id: unknown) => {
     const conversationId = IdSchema.parse(id)
-    stopTeam(conversationId)
+    stopTeam(conversationId, true)
     deleteTeamConversation(IdSchema.parse(teamId), conversationId)
   })
   ipcMain.handle(IPC.teamContinueWithChief, (_event, teamId: unknown, conversationId: unknown) =>
@@ -69,7 +70,20 @@ export function registerTeamIpc(): void {
     const deliver = (teamEvent: TeamEvent): void => {
       if (!sender.isDestroyed()) sender.send(IPC.teamEvent, teamEvent)
     }
-    void runTeam({ teamId: IdSchema.parse(teamId), conversationId: IdSchema.parse(conversationId), text: TextSchema.parse(text) }, deliver)
+    const request = { teamId: IdSchema.parse(teamId), conversationId: IdSchema.parse(conversationId), text: TextSchema.parse(text) }
+    void runTeam(request, deliver).then((outcome) => {
+      // Panneau fermé pendant le travail : on prévient, comme pour une tâche programmée.
+      if (isPanelOpen()) return
+      const team = getTeam(request.teamId)
+      if (!team || (!outcome.ok && outcome.message === 'Travail d’équipe interrompu.')) return
+      const open = { teamId: team.id, conversationId: request.conversationId }
+      if (outcome.ok) {
+        setWidgetBadge(true)
+        notify(`L'équipe ${team.name} a terminé`, preview(outcome.answer) || 'La réponse t’attend dans le panneau.', open)
+      } else {
+        notify(`L'équipe ${team.name} n'a pas pu finir`, outcome.message, open)
+      }
+    })
   })
   ipcMain.on(IPC.teamStop, (_event, conversationId: unknown) => stopTeam(IdSchema.parse(conversationId)))
 }

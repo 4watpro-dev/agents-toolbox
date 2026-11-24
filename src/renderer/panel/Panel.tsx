@@ -15,6 +15,7 @@ import { TeamDetails } from './team/TeamDetails'
 import { TeamEditor } from './team/TeamEditor'
 import { TeamsList } from './team/TeamsList'
 import { useTeams } from './team/useTeams'
+import { workingConversation } from './team/teamStore'
 
 type View =
   | { name: 'gallery' }
@@ -74,6 +75,12 @@ export function Panel(): React.JSX.Element {
 
   /** Rouvre la dernière conversation de l'équipe, ou en commence une nouvelle. */
   async function openTeam(team: Team): Promise<void> {
+    // L'équipe travaille encore : on revient sur ce travail en cours.
+    const active = workingConversation(team.id)
+    if (active) {
+      setView({ name: 'team', teamId: team.id, conversationId: active })
+      return
+    }
     const conversations = await window.toolbox.team.conversations(team.id)
     setView({ name: 'team', teamId: team.id, conversationId: conversations[0]?.id ?? crypto.randomUUID() })
   }
