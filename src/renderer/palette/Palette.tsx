@@ -6,6 +6,7 @@ import { Avatar, AvatarPausedContext } from '../avatar/Avatar'
 import { ActionCard } from '../panel/chat/ActionCard'
 import { MessageBubble } from '../panel/chat/MessageBubble'
 import { WorkingLine } from '../panel/chat/WorkingLine'
+import { exportTitle } from '../panel/chat/exportTitle'
 import {
   forgetChatSession,
   retryChatMessage,
@@ -202,7 +203,13 @@ export function Palette(): React.JSX.Element {
         <>
           <div className="palette-thread" ref={thread} aria-live="polite">
             {chat.messages.map((message) => (
-              <MessageBubble key={message.id} role={message.role} text={message.text} attachments={message.attachments} />
+              <MessageBubble
+                key={message.id}
+                role={message.role}
+                text={message.text}
+                attachments={message.attachments}
+                exportTitle={message.role === 'assistant' ? exportTitle(agent.name, chat.messages[chat.messages.indexOf(message) - 1]?.text) : undefined}
+              />
             ))}
             {chat.actions.map((action) => (
               <ActionCard key={action.id} action={action} agentName={agent.name} onAnswer={(approved) => window.toolbox.chat.confirm(action.id, approved)} />

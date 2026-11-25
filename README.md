@@ -56,6 +56,8 @@ Le mode abonnement est prévu pour un usage personnel, sur ton propre Mac : Anth
 | Voir l'historique et la mémoire | **☰**, en haut du chat |
 | Retrouver une conversation | Taper un mot dans la recherche de la galerie : les conversations qui le contiennent s'affichent sous les agents |
 | Épingler ou exporter une conversation | **☰**, puis l'épingle (elle reste en tête) ou la flèche (fichier Markdown) |
+| Exporter une réponse | **Exporter** sous une réponse d'agent ou d'équipe : PDF mis en page, Word (.docx) modifiable ou Markdown |
+| Enregistrer un script ou un fichier | **Enregistrer** en tête de chaque bloc de code : le nom annoncé par l'agent est repris (`utils.py`, `contacts.csv`…) |
 | Programmer une tâche | **☰**, section **Tâches programmées** : un nom, une consigne, des jours et une heure. Le résultat arrive dans une conversation, avec une notification et une pastille sur l'icône |
 | Donner des documents à un agent | **✎** sur l'agent, étape des compétences, **Dossier de documents** : l'agent y cherche et lit les fichiers utiles (texte, PDF, images), en lecture seule. Avec ton abonnement uniquement |
 | Faire travailler une équipe | Icône **équipes** en haut de la galerie : crée une équipe (un nom, un chef d'orchestre, 1 à 4 membres). Le chef répartit, chaque membre fait sa part, puis le chef rédige la réponse |

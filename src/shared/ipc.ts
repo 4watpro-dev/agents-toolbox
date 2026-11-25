@@ -76,6 +76,8 @@ export const IPC = {
   subscriptionLogin: 'subscription:login',
   generateAgent: 'generate:agent',
   knowledgeChoose: 'knowledge:choose',
+  filesExportReply: 'files:export-reply',
+  filesSaveText: 'files:save-text',
   teamRun: 'team:run',
   teamsList: 'teams:list',
   teamsSave: 'teams:save',
@@ -168,6 +170,15 @@ export interface TeamApi {
   onEvent(listener: (event: TeamEvent) => void): () => void
   /** Recopie la conversation chez le chef et renvoie où l'ouvrir. */
   continueWithChief(teamId: string, conversationId: string): Promise<Result<{ agentId: string; conversationId: string }>>
+}
+
+export type ExportFormat = 'md' | 'pdf' | 'docx'
+
+export interface FilesApi {
+  /** Met une réponse en forme et l'enregistre à l'endroit choisi. */
+  exportReply(payload: { format: ExportFormat; title: string; markdown: string; html: string }): Promise<TransferResult>
+  /** Enregistre un bloc de code (script, CSV…) à l'endroit choisi. */
+  saveText(payload: { name: string; content: string }): Promise<TransferResult>
 }
 
 export interface TasksApi {
@@ -294,6 +305,7 @@ export interface ToolboxApi {
   chat: ChatApi
   connectors: ConnectorsApi
   tasks: TasksApi
+  files: FilesApi
   team: TeamApi
   generateAgent(description: string): Promise<Result<AgentDraft>>
   /** Choisit un dossier de documents. `null` : choix annulé. */

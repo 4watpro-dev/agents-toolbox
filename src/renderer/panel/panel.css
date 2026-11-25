@@ -2059,3 +2059,77 @@ textarea.input {
     opacity: 0.7;
   }
 }
+
+/* Bloc de code d'une réponse : langue, Copier, Enregistrer. */
+.code-block {
+  margin: 0 0 8px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.code-block pre {
+  margin: 0 !important;
+  border-radius: 0 !important;
+}
+
+.code-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 3px 4px 3px 9px;
+  background: rgb(0 0 0 / 22%);
+  font-size: 11px;
+}
+
+.code-language {
+  color: var(--muted);
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  text-transform: lowercase;
+}
+
+.code-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.code-actions button {
+  padding: 2px 7px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.code-actions button:hover {
+  background: var(--surface-2);
+}
+
+.code-flash,
+.message-flash {
+  color: var(--accent);
+  font-size: 11px;
+}
+
+/* Actions sous une réponse : Copier, Exporter et ses formats. */
+.message-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+}
+
+.message-format {
+  border: 1px solid var(--accent-line) !important;
+  color: var(--accent) !important;
+  opacity: 1 !important;
+}
+
+.message-flash {
+  margin-left: 6px;
+}

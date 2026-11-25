@@ -97,6 +97,10 @@ const api: ToolboxApi = {
     onEvent: (listener) => subscribe<TeamEvent>(IPC.teamEvent, listener),
     continueWithChief: (teamId, conversationId) => ipcRenderer.invoke(IPC.teamContinueWithChief, teamId, conversationId)
   },
+  files: {
+    exportReply: (payload) => ipcRenderer.invoke(IPC.filesExportReply, payload),
+    saveText: (payload) => ipcRenderer.invoke(IPC.filesSaveText, payload)
+  },
   tasks: {
     list: (agentId) => ipcRenderer.invoke(IPC.tasksList, agentId),
     save: (id, input) => ipcRenderer.invoke(IPC.tasksSave, id, input),

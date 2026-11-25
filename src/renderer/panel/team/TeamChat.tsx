@@ -8,6 +8,7 @@ import { MessageBubble } from '../chat/MessageBubble'
 import { TeamAvatars } from './TeamsList'
 import { activityLabel } from '../../../shared/tools'
 import { useNow, WorkingLine } from '../chat/WorkingLine'
+import { exportTitle } from '../chat/exportTitle'
 import { formatElapsed, teamSteps, type MemberStatus, type TeamRun } from './teamState'
 import { loadTeamConversation, startTeamRun, useTeamRuns } from './teamStore'
 
@@ -246,7 +247,7 @@ export function TeamChat({
             {run.phase === 'synthesis' && run.status === 'running' && !run.answer && (
               <WorkingLine text={(chief && doing(run, chief.id, chief.name)) ?? `${chief?.name ?? 'Le chef'} rédige la réponse de l'équipe`} />
             )}
-            {run.answer && <MessageBubble role="assistant" text={run.answer} />}
+            {run.answer && <MessageBubble role="assistant" text={run.answer} exportTitle={exportTitle(`Équipe ${team.name}`, run.request)} />}
             {run.status === 'error' && (
               <p className="form-error" role="alert">
                 Échec : {run.error}

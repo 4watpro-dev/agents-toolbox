@@ -9,6 +9,7 @@ import { PaperclipIcon } from '../icons'
 import { AttachmentList } from './AttachmentList'
 import { MessageBubble } from './MessageBubble'
 import { WorkingLine } from './WorkingLine'
+import { exportTitle } from './exportTitle'
 import {
   loadChatSession,
   retryChatMessage,
@@ -203,8 +204,14 @@ export function ChatView({
         }}
       >
         {agent.greeting && <MessageBubble role="assistant" text={agent.greeting} />}
-        {chat.messages.map((message) => (
-          <MessageBubble key={message.id} role={message.role} text={message.text} attachments={message.attachments} />
+        {chat.messages.map((message, index) => (
+          <MessageBubble
+            key={message.id}
+            role={message.role}
+            text={message.text}
+            attachments={message.attachments}
+            exportTitle={message.role === 'assistant' ? exportTitle(agent.name, chat.messages[index - 1]?.text) : undefined}
+          />
         ))}
         {chat.actions.map((action) => (
           <ActionCard key={action.id} action={action} agentName={agent.name} onAnswer={(approved) => window.toolbox.chat.confirm(action.id, approved)} />
