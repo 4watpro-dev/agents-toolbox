@@ -26,7 +26,9 @@ const BODIES: Record<GhostShape, string> = {
     'M60 14 C85 14 104 33 104 58 L104 92 Q96.7 108 89.3 92 Q82 80 74.7 92 Q67.3 108 60 92 Q52.7 80 45.3 92 Q38 108 30.7 92 Q23.3 80 16 92 L16 58 C16 33 35 14 60 14 Z',
   round: 'M60 14 C85 14 104 34 104 59 C104 84 85 104 60 104 C35 104 16 84 16 59 C16 34 35 14 60 14 Z',
   // Drap : dôme en demi-cercle, côtés droits, bas plat aux coins arrondis.
-  sheet: 'M22 51 A38 38 0 0 1 98 51 L98 98 Q98 107 89 107 L31 107 Q22 107 22 98 Z'
+  sheet: 'M22 51 A38 38 0 0 1 98 51 L98 98 Q98 107 89 107 L31 107 Q22 107 22 98 Z',
+  // Audacieux : dôme, flancs qui s'évasent en deux pointes, bas en double arche avec une petite pointe au centre.
+  bold: 'M60 14 C82 14 98 30 98 52 C98 72 100 92 105 104 Q106 108 102 107.5 C94 99 82 90 72 90 C66 90 62 92 60 96 C58 92 54 90 48 90 C38 90 26 99 18 107.5 Q14 108 15 104 C20 92 22 72 22 52 C22 30 38 14 60 14 Z'
 }
 
 /**
@@ -41,7 +43,8 @@ const REFLECTIONS: Record<GhostShape, { cy: number; rx: number; ry: number }> = 
   drop: { cy: 94, rx: 30, ry: 20 },
   classic: { cy: 102, rx: 48, ry: 20 },
   round: { cy: 104, rx: 40, ry: 22 },
-  sheet: { cy: 104, rx: 30, ry: 16 }
+  sheet: { cy: 104, rx: 30, ry: 16 },
+  bold: { cy: 98, rx: 40, ry: 16 }
 }
 
 const SPRING = { type: 'spring', stiffness: 260, damping: 20 } as const

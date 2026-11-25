@@ -11,7 +11,8 @@ export const SHAPE_LABELS: Record<GhostShape, string> = {
   drop: 'Goutte',
   classic: 'Classique',
   round: 'Bulle',
-  sheet: 'Drap'
+  sheet: 'Drap',
+  bold: 'Audacieux'
 }
 
 export const ACCESSORY_LABELS: Record<Accessory, string> = {

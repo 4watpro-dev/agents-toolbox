@@ -4,7 +4,7 @@ export type EyeStyle = (typeof EYE_STYLES)[number]
 export const ACCESSORIES = ['none', 'glasses', 'headphones', 'bowtie', 'beanie'] as const
 export type Accessory = (typeof ACCESSORIES)[number]
 
-export const GHOST_SHAPES = ['drop', 'classic', 'round', 'sheet'] as const
+export const GHOST_SHAPES = ['drop', 'classic', 'round', 'sheet', 'bold'] as const
 export type GhostShape = (typeof GHOST_SHAPES)[number]
 
 export const AVATAR_STATES = [
