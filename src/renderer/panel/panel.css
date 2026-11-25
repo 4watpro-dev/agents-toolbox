@@ -851,6 +851,176 @@ textarea.input {
   position: relative;
 }
 
+/* Sous l'en-tête : barre des conversations (fenêtre large) puis le fil et la saisie. */
+.chat-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.chat-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* Comme sur Claude : le dernier message ne colle jamais au bas du fil. */
+.chat-messages::after {
+  content: '';
+  flex: none;
+  height: 26px;
+}
+
+.chat-sidebar {
+  display: none;
+  flex: none;
+  flex-direction: column;
+  gap: 8px;
+  width: 248px;
+  padding: 10px 8px;
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+@media (min-width: 720px) {
+  .chat-sidebar {
+    display: flex;
+  }
+}
+
+.chat-sidebar.is-collapsed {
+  align-items: center;
+  width: 48px;
+  padding: 10px 6px;
+}
+
+.chat-sidebar-head {
+  display: flex;
+  gap: 6px;
+}
+
+.chat-sidebar-head .chat-sidebar-new {
+  flex: 1;
+  min-width: 0;
+  padding: 7px 9px;
+  white-space: nowrap;
+}
+
+.chat-sidebar-toggle {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.chat-sidebar-toggle:hover:not(:disabled) {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.chat-sidebar-toggle:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.chat-sidebar-new {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.chat-sidebar-new:hover:not(:disabled) {
+  border-color: var(--accent-line);
+}
+
+.chat-sidebar-new:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.chat-sidebar-empty {
+  margin: 4px 6px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.chat-sidebar-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.chat-sidebar-item {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 9px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.chat-sidebar-item:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.chat-sidebar-item[aria-current='true'] {
+  background: var(--accent-soft);
+  color: var(--text);
+}
+
+.chat-sidebar-title {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+.chat-sidebar-title > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-sidebar-title svg {
+  flex: none;
+  color: var(--accent);
+}
+
+.chat-sidebar-date {
+  flex: none;
+  color: var(--muted);
+  font-size: 11px;
+}
+
 /* Zone de dépôt : couvre le chat pendant qu'on y glisse des fichiers. */
 .chat-drop {
   position: absolute;

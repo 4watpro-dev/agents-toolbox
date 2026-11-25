@@ -112,6 +112,16 @@ export function PlusIcon(props: IconProps): React.JSX.Element {
   )
 }
 
+/** Panneau latéral : cadre avec sa colonne de gauche. */
+export function SidebarIcon(props: IconProps): React.JSX.Element {
+  return (
+    <Icon {...props}>
+      <rect x="3.5" y="4.5" width="17" height="15" rx="2.5" />
+      <path d="M9.5 4.5v15" />
+    </Icon>
+  )
+}
+
 export function GridIcon(props: IconProps): React.JSX.Element {
   return (
     <Icon {...props}>

@@ -7,17 +7,11 @@ import { Avatar } from '../../avatar/Avatar'
 import { ActionCard } from './ActionCard'
 import { PaperclipIcon } from '../icons'
 import { AttachmentList } from './AttachmentList'
+import { ChatSidebar } from './ChatSidebar'
 import { MessageBubble } from './MessageBubble'
 import { WorkingLine } from './WorkingLine'
 import { exportTitle } from './exportTitle'
-import {
-  loadChatSession,
-  retryChatMessage,
-  sendChatMessage,
-  stopChatMessage,
-  undoRemembered,
-  useChatSession
-} from './chatStore'
+import { loadChatSession, retryChatMessage, sendChatMessage, stopChatMessage, undoRemembered, useChatSession } from './chatStore'
 import { readAttachments, toSendable, type PendingAttachment } from './pendingAttachments'
 
 // Réessayer n'y changerait rien : il faut d'abord régler la connexion.
@@ -35,6 +29,8 @@ interface ChatViewProps {
   onNew(): void
   onEdit?(): void
   onDetails?(): void
+  /** Ouvre une autre conversation de l'agent, depuis la barre latérale. */
+  onOpenConversation?(id: string): void
   onOpenSettings(): void
   /** Sélecteur d'agent : remplace le titre fixe de l'en-tête. */
   switcher?: React.ReactNode
@@ -51,6 +47,7 @@ export function ChatView({
   onNew,
   onEdit,
   onDetails,
+  onOpenConversation,
   onOpenSettings,
   switcher
 }: ChatViewProps): React.JSX.Element {
@@ -183,7 +180,13 @@ export function ChatView({
           ＋
         </button>
         {onDetails && (
-          <button type="button" className="button-icon" aria-label="Historique et mémoire" title="Historique et mémoire" onClick={onDetails}>
+          <button
+            type="button"
+            className="button-icon"
+            aria-label="Historique et mémoire"
+            title="Historique et mémoire"
+            onClick={onDetails}
+          >
             ☰
           </button>
         )}
@@ -194,124 +197,145 @@ export function ChatView({
         )}
       </header>
 
-      <div
-        className="chat-messages"
-        ref={scroller}
-        aria-live="polite"
-        onScroll={(event) => {
-          const { scrollTop, scrollHeight, clientHeight } = event.currentTarget
-          stuckToBottom.current = scrollHeight - scrollTop - clientHeight < 32
-        }}
-      >
-        {agent.greeting && <MessageBubble role="assistant" text={agent.greeting} />}
-        {chat.messages.map((message, index) => (
-          <MessageBubble
-            key={message.id}
-            role={message.role}
-            text={message.text}
-            attachments={message.attachments}
-            exportTitle={message.role === 'assistant' ? exportTitle(agent.name, chat.messages[index - 1]?.text) : undefined}
+      <div className="chat-body">
+        {agentId && onOpenConversation && (
+          <ChatSidebar
+            agentId={agentId}
+            currentConversationId={sessionId}
+            revision={chat.busy ? -1 : chat.messages.length}
+            onOpen={onOpenConversation}
+            onNew={onNew}
+            newDisabled={chat.messages.length === 0}
           />
-        ))}
-        {chat.actions.map((action) => (
-          <ActionCard key={action.id} action={action} agentName={agent.name} onAnswer={(approved) => window.toolbox.chat.confirm(action.id, approved)} />
-        ))}
-        {chat.busy && chat.actions.some((action) => !action.outcome) ? null : (
-          <>
-            {chat.busy && chat.activity && <WorkingLine text={activityLabel(agent.name, chat.activity)} since={busySince ?? undefined} />}
-            {chat.busy && !chat.activity && chat.messages.at(-1)?.role === 'user' && (
-              <WorkingLine text={`${agent.name} réfléchit…`} since={busySince ?? undefined} />
-            )}
-          </>
         )}
-        {agentId &&
-          chat.remembered.map((fact) => (
-            <div key={fact} className="chat-remembered" role="status">
-              <span>
-                <strong>{agent.name} retient :</strong> {fact}
-              </span>
-              <button type="button" className="button" onClick={() => void undoRemembered(sessionId, agentId, fact)}>
-                Retirer
-              </button>
-            </div>
-          ))}
-        {chat.notice && <p className="chat-notice">{chat.notice}</p>}
-        {chat.failure && (
-          <div className="chat-failure" role="alert">
-            <p>{chat.failure.message}</p>
-            <div className="chat-failure-actions">
-              {CONNECTION_ERRORS.has(chat.failure.code) ? (
-                <button type="button" className="button" onClick={onOpenSettings}>
-                  Ouvrir les réglages
-                </button>
-              ) : (
-                <button type="button" className="button" onClick={() => retryChatMessage(sessionId, agent, agentId)}>
-                  Réessayer
-                </button>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
-
-      <footer className="chat-input">
-        {(pending.length > 0 || attachProblems.length > 0) && (
-          <div className="chat-pending">
-            {pending.length > 0 && (
-              <AttachmentList
-                attachments={pending}
-                onRemove={(index) => setPending((current) => current.filter((_, i) => i !== index))}
+        <div className="chat-main">
+          <div
+            className="chat-messages"
+            ref={scroller}
+            aria-live="polite"
+            onScroll={(event) => {
+              const { scrollTop, scrollHeight, clientHeight } = event.currentTarget
+              stuckToBottom.current = scrollHeight - scrollTop - clientHeight < 32
+            }}
+          >
+            {agent.greeting && <MessageBubble role="assistant" text={agent.greeting} />}
+            {chat.messages.map((message, index) => (
+              <MessageBubble
+                key={message.id}
+                role={message.role}
+                text={message.text}
+                attachments={message.attachments}
+                exportTitle={message.role === 'assistant' ? exportTitle(agent.name, chat.messages[index - 1]?.text) : undefined}
               />
-            )}
-            {attachProblems.map((problem) => (
-              <p key={problem} className="chat-attach-problem" role="alert">
-                {problem}
-              </p>
             ))}
+            {chat.actions.map((action) => (
+              <ActionCard
+                key={action.id}
+                action={action}
+                agentName={agent.name}
+                onAnswer={(approved) => window.toolbox.chat.confirm(action.id, approved)}
+              />
+            ))}
+            {chat.busy && chat.actions.some((action) => !action.outcome) ? null : (
+              <>
+                {chat.busy && chat.activity && (
+                  <WorkingLine text={activityLabel(agent.name, chat.activity)} since={busySince ?? undefined} />
+                )}
+                {chat.busy && !chat.activity && chat.messages.at(-1)?.role === 'user' && (
+                  <WorkingLine text={`${agent.name} réfléchit…`} since={busySince ?? undefined} />
+                )}
+              </>
+            )}
+            {agentId &&
+              chat.remembered.map((fact) => (
+                <div key={fact} className="chat-remembered" role="status">
+                  <span>
+                    <strong>{agent.name} retient :</strong> {fact}
+                  </span>
+                  <button type="button" className="button" onClick={() => void undoRemembered(sessionId, agentId, fact)}>
+                    Retirer
+                  </button>
+                </div>
+              ))}
+            {chat.notice && <p className="chat-notice">{chat.notice}</p>}
+            {chat.failure && (
+              <div className="chat-failure" role="alert">
+                <p>{chat.failure.message}</p>
+                <div className="chat-failure-actions">
+                  {CONNECTION_ERRORS.has(chat.failure.code) ? (
+                    <button type="button" className="button" onClick={onOpenSettings}>
+                      Ouvrir les réglages
+                    </button>
+                  ) : (
+                    <button type="button" className="button" onClick={() => retryChatMessage(sessionId, agent, agentId)}>
+                      Réessayer
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
-        )}
-        <button
-          type="button"
-          className="chat-attach"
-          aria-label="Joindre des fichiers"
-          title="Joindre des images, PDF ou fichiers texte"
-          disabled={chat.busy}
-          onClick={() => filePicker.current?.click()}
-        >
-          <PaperclipIcon size={19} />
-        </button>
-        <input
-          ref={filePicker}
-          type="file"
-          multiple
-          hidden
-          accept={ACCEPTED_EXTENSIONS}
-          onChange={(event) => {
-            void addFiles(Array.from(event.target.files ?? []))
-            event.target.value = ''
-          }}
-        />
-        <textarea
-          ref={field}
-          className="input"
-          rows={2}
-          placeholder={`Écrire à ${agent.name}…`}
-          aria-label={`Écrire à ${agent.name}`}
-          value={input}
-          onChange={(event) => setInput(event.target.value)}
-          onKeyDown={onKeyDown}
-          onPaste={onPaste}
-        />
-        {chat.busy ? (
-          <button type="button" className="button" onClick={() => stopChatMessage(sessionId)}>
-            Arrêter
-          </button>
-        ) : (
-          <button type="button" className="button button-primary" disabled={!input.trim() && pending.length === 0} onClick={send}>
-            Envoyer
-          </button>
-        )}
-      </footer>
+
+          <footer className="chat-input">
+            {(pending.length > 0 || attachProblems.length > 0) && (
+              <div className="chat-pending">
+                {pending.length > 0 && (
+                  <AttachmentList
+                    attachments={pending}
+                    onRemove={(index) => setPending((current) => current.filter((_, i) => i !== index))}
+                  />
+                )}
+                {attachProblems.map((problem) => (
+                  <p key={problem} className="chat-attach-problem" role="alert">
+                    {problem}
+                  </p>
+                ))}
+              </div>
+            )}
+            <button
+              type="button"
+              className="chat-attach"
+              aria-label="Joindre des fichiers"
+              title="Joindre des images, PDF ou fichiers texte"
+              disabled={chat.busy}
+              onClick={() => filePicker.current?.click()}
+            >
+              <PaperclipIcon size={19} />
+            </button>
+            <input
+              ref={filePicker}
+              type="file"
+              multiple
+              hidden
+              accept={ACCEPTED_EXTENSIONS}
+              onChange={(event) => {
+                void addFiles(Array.from(event.target.files ?? []))
+                event.target.value = ''
+              }}
+            />
+            <textarea
+              ref={field}
+              className="input"
+              rows={2}
+              placeholder={`Écrire à ${agent.name}…`}
+              aria-label={`Écrire à ${agent.name}`}
+              value={input}
+              onChange={(event) => setInput(event.target.value)}
+              onKeyDown={onKeyDown}
+              onPaste={onPaste}
+            />
+            {chat.busy ? (
+              <button type="button" className="button" onClick={() => stopChatMessage(sessionId)}>
+                Arrêter
+              </button>
+            ) : (
+              <button type="button" className="button button-primary" disabled={!input.trim() && pending.length === 0} onClick={send}>
+                Envoyer
+              </button>
+            )}
+          </footer>
+        </div>
+      </div>
     </div>
   )
 }

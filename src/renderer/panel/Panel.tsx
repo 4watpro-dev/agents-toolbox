@@ -177,6 +177,7 @@ export function Panel(): React.JSX.Element {
           onBack={() => setView({ name: 'gallery' })}
           onNew={() => setView({ ...view, conversationId: crypto.randomUUID() })}
           onDetails={() => setView({ ...view, name: 'details' })}
+          onOpenConversation={(conversationId) => setView({ ...view, conversationId })}
           onEdit={() => setView({ name: 'wizard', agent: conversationAgent })}
           onOpenSettings={openSettings}
           switcher={<AgentSwitcher agent={conversationAgent} agents={agents} onSwitch={(agent) => void openAgent(agent)} />}
