@@ -33,7 +33,7 @@ interface ChatSidebarProps {
 
 /**
  * Conversations de l'agent, à gauche du chat. Affichée seulement quand
- * le panneau est assez large (voir panel.css) ; sinon, l'historique reste derrière ☰.
+ * le panneau est assez large (voir panel.css) ; sinon, l'historique reste derrière le bouton Historique de l'en-tête.
  */
 export function ChatSidebar({ agentId, currentConversationId, revision, onOpen, onNew, newDisabled }: ChatSidebarProps): React.JSX.Element {
   const [conversations, setConversations] = useState<ConversationSummary[]>([])

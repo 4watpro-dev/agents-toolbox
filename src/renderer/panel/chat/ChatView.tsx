@@ -5,7 +5,7 @@ import type { AvatarState } from '../../../shared/avatar'
 import { activityLabel } from '../../../shared/tools'
 import { Avatar } from '../../avatar/Avatar'
 import { ActionCard } from './ActionCard'
-import { PaperclipIcon } from '../icons'
+import { HistoryIcon, PaperclipIcon, PencilIcon, PlusIcon } from '../icons'
 import { AttachmentList } from './AttachmentList'
 import { ChatSidebar } from './ChatSidebar'
 import { MessageBubble } from './MessageBubble'
@@ -177,7 +177,7 @@ export function ChatView({
           disabled={chat.messages.length === 0}
           onClick={onNew}
         >
-          ＋
+          <PlusIcon size={18} />
         </button>
         {onDetails && (
           <button
@@ -187,12 +187,12 @@ export function ChatView({
             title="Historique et mémoire"
             onClick={onDetails}
           >
-            ☰
+            <HistoryIcon size={17} />
           </button>
         )}
         {onEdit && (
           <button type="button" className="button-icon" aria-label={`Modifier ${agent.name}`} title="Modifier" onClick={onEdit}>
-            ✎
+            <PencilIcon size={17} />
           </button>
         )}
       </header>

@@ -122,6 +122,27 @@ export function SidebarIcon(props: IconProps): React.JSX.Element {
   )
 }
 
+/** Historique : cadran avec une flèche qui revient en arrière. */
+export function HistoryIcon(props: IconProps): React.JSX.Element {
+  return (
+    <Icon {...props}>
+      <path d="M3.5 12a8.5 8.5 0 1 0 2.5-6L3.5 8.5" />
+      <path d="M3.5 4v4.5H8" />
+      <path d="M12 7.5V12l3 1.8" />
+    </Icon>
+  )
+}
+
+/** Modifier : stylo fin en biais, posé sur un trait. */
+export function PencilIcon(props: IconProps): React.JSX.Element {
+  return (
+    <Icon {...props}>
+      <path d="M13 20h7" />
+      <path d="M15.6 4.6a2 2 0 0 1 2.8 2.8L8 17.8l-3.6.8.8-3.6Z" />
+    </Icon>
+  )
+}
+
 export function GridIcon(props: IconProps): React.JSX.Element {
   return (
     <Icon {...props}>

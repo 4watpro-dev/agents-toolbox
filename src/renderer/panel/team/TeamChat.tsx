@@ -1,3 +1,4 @@
+import { HistoryIcon, PencilIcon, PlusIcon } from '../icons'
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
 import Markdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -154,13 +155,13 @@ export function TeamChat({
           disabled={runs.length === 0 || running}
           onClick={onNew}
         >
-          ＋
+          <PlusIcon size={18} />
         </button>
         <button type="button" className="button-icon" aria-label="Historique et tâches de l'équipe" title="Historique et tâches" onClick={onDetails}>
-          ☰
+          <HistoryIcon size={17} />
         </button>
         <button type="button" className="button-icon" aria-label={`Modifier ${team.name}`} title="Modifier l'équipe" onClick={onEdit}>
-          ✎
+          <PencilIcon size={17} />
         </button>
       </header>
 

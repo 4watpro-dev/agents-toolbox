@@ -580,6 +580,11 @@ textarea.input {
   cursor: pointer;
 }
 
+.button-icon > svg {
+  display: block;
+  margin: auto;
+}
+
 .button-icon:hover:not(:disabled) {
   background: var(--surface-2);
   color: var(--text);
