@@ -12,7 +12,8 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "icon": "node scripts/make-app-icon.mjs",
-    "app": "electron-vite build && electron-builder --mac --dir && rm -rf \"/Applications/Agent Toolbox.app\" && ditto \"dist/mac-arm64/Agent Toolbox.app\" \"/Applications/Agent Toolbox.app\""
+    "app": "electron-vite build && electron-builder --mac --dir && rm -rf \"/Applications/Agent Toolbox.app\" && ditto \"dist/mac-arm64/Agent Toolbox.app\" \"/Applications/Agent Toolbox.app\"",
+    "app:check": "AT_ALLOW_DEBUG=1 electron-vite build && electron-builder --mac --dir"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.4.0",
@@ -57,7 +58,16 @@
       "icon": "build/icon.png",
       "category": "public.app-category.productivity",
       "identity": "-",
-      "hardenedRuntime": false
+      "hardenedRuntime": true,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist"
+    },
+    "electronFuses": {
+      "runAsNode": false,
+      "enableNodeOptionsEnvironmentVariable": false,
+      "enableNodeCliInspectArguments": false,
+      "enableEmbeddedAsarIntegrityValidation": true,
+      "onlyLoadAppFromAsar": true
     }
   }
 }

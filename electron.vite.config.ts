@@ -26,7 +26,10 @@ function contentSecurityPolicy(): Plugin {
 
 export default defineConfig({
   main: {
-    build: { rollupOptions: { input: { index: resolve('src/main/index.ts') } } }
+    build: { rollupOptions: { input: { index: resolve('src/main/index.ts') } } },
+    // Débogage distant : refusé dans l'app installée. Seule une version de vérification,
+    // construite à part (npm run app:check), l'accepte ; elle n'est jamais installée.
+    define: { __ALLOW_DEBUG__: JSON.stringify(process.env['AT_ALLOW_DEBUG'] === '1') }
   },
   preload: {
     build: { rollupOptions: { input: { index: resolve('src/preload/index.ts') } } }

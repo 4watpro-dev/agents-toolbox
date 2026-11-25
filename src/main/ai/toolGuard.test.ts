@@ -167,10 +167,12 @@ describe('contrôle des connecteurs', () => {
 
 describe('toolGuardArgs', () => {
   it("n'expose que les outils activés et protège les chemins avec espaces", () => {
-    const args = toolGuardArgs({ webSearch: false, webFetch: true, allowedDomains: [], connectors: [], knowledgeFolder: null }, null, null, '/App Support/Electron', "/l'app/guard.cjs")
+    const args = toolGuardArgs({ webSearch: false, webFetch: true, allowedDomains: [], connectors: [], knowledgeFolder: null }, null, null, ["/App Support/l'app"])
     expect(args.tools).toBe('WebFetch')
     const command = JSON.parse(args.settings).hooks.PreToolUse[0].hooks[0].command as string
-    expect(command).toContain("ELECTRON_RUN_AS_NODE=1 '/App Support/Electron' '/l'\\''app/guard.cjs'")
+    expect(command.startsWith("'/App Support/l'\\''app' '--agent-toolbox-tool-guard' '")).toBe(true)
+    // Plus de mode Node : il est coupé dans l'app installée.
+    expect(command).not.toContain('ELECTRON_RUN_AS_NODE')
   })
 })
 
@@ -238,7 +240,7 @@ describe('contrôle du dossier de documents', () => {
   })
 
   it('donne les outils de lecture et ouvre le dossier', () => {
-    const args = toolGuardArgs({ webSearch: false, webFetch: false, allowedDomains: [], connectors: [], knowledgeFolder: docs }, null, null, '/bin/node', '/tmp/g.cjs', docs)
+    const args = toolGuardArgs({ webSearch: false, webFetch: false, allowedDomains: [], connectors: [], knowledgeFolder: docs }, null, null, ['/Applications/Agent Toolbox.app/Contents/MacOS/Agent Toolbox'], docs)
     expect(args.tools).toBe('Read,Glob,Grep')
     expect(args.addDir).toBe(docs)
   })

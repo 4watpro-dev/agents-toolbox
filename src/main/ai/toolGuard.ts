@@ -13,15 +13,15 @@ const fs = require('node:fs')
 const net = require('node:net')
 const path = require('node:path')
 
+// Le processus s'arrête dès la réponse écrite : sous Electron, rien d'autre ne le ferait.
 function decide(permissionDecision, permissionDecisionReason, updatedInput) {
   const hookSpecificOutput = { hookEventName: 'PreToolUse', permissionDecision, permissionDecisionReason }
   if (updatedInput) hookSpecificOutput.updatedInput = updatedInput
-  process.stdout.write(JSON.stringify({ hookSpecificOutput }))
+  process.stdout.write(JSON.stringify({ hookSpecificOutput }), () => process.exit(0))
 }
 
 function fail() {
-  process.stderr.write("Le contrôle des outils a échoué : l'appel est bloqué.")
-  process.exit(2)
+  process.stderr.write("Le contrôle des outils a échoué : l'appel est bloqué.", () => process.exit(2))
 }
 
 function askApp(bridge, tool, input) {
@@ -50,7 +50,8 @@ function askApp(bridge, tool, input) {
 }
 
 try {
-  const policy = JSON.parse(Buffer.from(process.argv[2], 'base64').toString('utf8'))
+  // La politique est toujours le dernier argument, que le contrôle tourne sous Node ou dans l'app.
+  const policy = JSON.parse(Buffer.from(process.argv[process.argv.length - 1], 'base64').toString('utf8'))
   const call = JSON.parse(fs.readFileSync(0, 'utf8'))
   const domains = policy.allowedDomains
   const input = call.tool_input || {}
@@ -157,13 +158,23 @@ export function connectorConfig(connectors: ResolvedConnector[]): ConnectorConfi
   return { mcpConfig: JSON.stringify({ mcpServers }), env, labels }
 }
 
-/** Options de Claude Code pour un agent à outils. Le contrôle tourne sur le Node intégré à Electron. */
+/**
+ * Option qui lance l'app en mode « contrôle des outils » : un court processus sans fenêtre,
+ * ni Dock, qui exécute TOOL_GUARD_SCRIPT puis s'arrête. Il remplace ELECTRON_RUN_AS_NODE,
+ * coupé dans l'app installée : ce mode laissait n'importe quel programme exécuter son
+ * propre code sous l'identité de l'app, et donc lire ses secrets dans le trousseau.
+ */
+export const TOOL_GUARD_FLAG = '--agent-toolbox-tool-guard'
+
+/**
+ * Options de Claude Code pour un agent à outils. `launcher` : la commande qui démarre
+ * l'app (son exécutable, plus le dossier du projet en développement).
+ */
 export function toolGuardArgs(
   tools: AgentTools,
   mcpConfig: string | null,
   bridge: { socket: string; runId: string } | null,
-  runtimePath: string,
-  scriptPath: string,
+  launcher: string[],
   /** Chemin réel du dossier de documents, déjà vérifié. */
   knowledge: string | null = null
 ): ToolArgs {
@@ -174,7 +185,7 @@ export function toolGuardArgs(
   ]
   const { webSearch, webFetch, allowedDomains } = tools
   const policy = Buffer.from(JSON.stringify({ webSearch, webFetch, allowedDomains, bridge, knowledge })).toString('base64')
-  const command = `ELECTRON_RUN_AS_NODE=1 ${shellQuote(runtimePath)} ${shellQuote(scriptPath)} ${shellQuote(policy)}`
+  const command = [...launcher, TOOL_GUARD_FLAG, policy].map(shellQuote).join(' ')
   return {
     tools: names.join(','),
     mcpConfig,

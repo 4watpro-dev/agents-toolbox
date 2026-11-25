@@ -1,5 +1,5 @@
 import { spawn, type ChildProcess } from 'node:child_process'
-import { accessSync, constants, mkdirSync, writeFileSync } from 'node:fs'
+import { accessSync, constants, mkdirSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { delimiter, join } from 'node:path'
 import { createInterface } from 'node:readline'
@@ -31,7 +31,7 @@ import { userContent, type OutgoingMessage } from './attachments'
 import { GENERATION_INSTRUCTIONS, GENERATION_MODEL } from './generationPrompt'
 import { GeneratedAgentSchema, normalizeGenerated } from './normalizeGenerated'
 import { openToolRun } from './toolBridge'
-import { connectorConfig, TOOL_GUARD_SCRIPT, toolGuardArgs } from './toolGuard'
+import { connectorConfig, toolGuardArgs } from './toolGuard'
 
 type Emit = (event: ChatEvent) => void
 
@@ -78,13 +78,9 @@ function neutralDirectory(): string {
   return directory
 }
 
-/** Le contrôle des outils vit hors du dossier neutre, que Claude Code garde vide. */
-function writeToolGuard(): string {
-  const directory = join(app.getPath('userData'), 'tools')
-  mkdirSync(directory, { recursive: true })
-  const script = join(directory, 'tool-guard.cjs')
-  writeFileSync(script, TOOL_GUARD_SCRIPT, { mode: 0o600 })
-  return script
+/** Commande qui relance l'app en mode contrôle. En développement, Electron a besoin du dossier du projet. */
+function guardLauncher(): string[] {
+  return app.isPackaged ? [process.execPath] : [process.execPath, app.getAppPath()]
 }
 
 function launch(binary: string, args: string[], extraEnv: Record<string, string> = {}): ChildProcess {
@@ -134,8 +130,7 @@ export function sendViaClaudeCode(sessionId: string, agent: AgentDraft, message:
         agent.tools,
         mcpConfig,
         toolRun && { socket: toolRun.socket, runId: toolRun.runId },
-        process.execPath,
-        writeToolGuard(),
+        guardLauncher(),
         knowledge
       )
     : null
