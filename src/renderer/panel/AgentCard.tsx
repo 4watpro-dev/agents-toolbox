@@ -3,8 +3,12 @@ import type { Agent } from '../../shared/agent'
 import { Avatar } from '../avatar/Avatar'
 import { useEscape } from './useEscape'
 
+/** `grid` : grande carte. `list` : ligne compacte, pour qui a beaucoup d'agents. */
+export type GalleryLayout = 'grid' | 'list'
+
 interface AgentCardProps {
   agent: Agent
+  layout?: GalleryLayout
   onOpen(): void
   onEdit(): void
   onExport(): void
@@ -14,7 +18,8 @@ interface AgentCardProps {
 
 type Overlay = 'none' | 'menu' | 'confirm'
 
-export function AgentCard({ agent, onOpen, onEdit, onExport, onRemove, onToggleFavorite }: AgentCardProps): React.JSX.Element {
+export function AgentCard({ agent, layout = 'grid', onOpen, onEdit, onExport, onRemove, onToggleFavorite }: AgentCardProps): React.JSX.Element {
+  const list = layout === 'list'
   const [hovered, setHovered] = useState(false)
   const [overlay, setOverlay] = useState<Overlay>('none')
 
@@ -23,7 +28,7 @@ export function AgentCard({ agent, onOpen, onEdit, onExport, onRemove, onToggleF
 
   return (
     <li
-      className="card"
+      className={list ? 'card card-row' : 'card'}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => {
         setHovered(false)
@@ -31,10 +36,23 @@ export function AgentCard({ agent, onOpen, onEdit, onExport, onRemove, onToggleF
       }}
     >
       <button type="button" className="card-open" onClick={onOpen}>
-        {/* Une grille de flottements continus coûterait cher : seule la carte survolée flotte. */}
-        <Avatar config={agent.avatar} state={hovered ? 'happy' : 'idle'} size={72} floating={hovered} />
-        <span className="card-name">{agent.name}</span>
-        <span className="card-specialty">{agent.specialty}</span>
+        {list ? (
+          <>
+            <Avatar config={agent.avatar} state={hovered ? 'happy' : 'idle'} size={36} groundShadow={false} floating={false} />
+            <span className="card-row-text">
+              <span className="card-name">{agent.name}</span>
+              <span className="card-specialty">{agent.specialty}</span>
+            </span>
+            <span className="card-category">{agent.category}</span>
+          </>
+        ) : (
+          <>
+            {/* Une grille de flottements continus coûterait cher : seule la carte survolée flotte. */}
+            <Avatar config={agent.avatar} state={hovered ? 'happy' : 'idle'} size={72} floating={hovered} />
+            <span className="card-name">{agent.name}</span>
+            <span className="card-specialty">{agent.specialty}</span>
+          </>
+        )}
       </button>
 
       <button

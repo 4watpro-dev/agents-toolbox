@@ -2274,3 +2274,150 @@ textarea.input {
 .team-card-new-plus svg {
   display: block;
 }
+
+/* Filtres et sélecteur d'affichage sur une même ligne. */
+.gallery-tools {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.gallery-tools .chips {
+  flex: 1;
+  min-width: 0;
+}
+
+.view-switch {
+  display: flex;
+  flex: none;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--field);
+}
+
+.view-switch button {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.view-switch button:hover {
+  color: var(--text);
+}
+
+.view-switch button[aria-checked='true'] {
+  background: var(--surface-2);
+  color: var(--accent);
+  box-shadow: var(--highlight);
+}
+
+/* En grille, le bloc de texte de la carte de création se fond dans la colonne. */
+.card-grid .card-row-text {
+  display: contents;
+}
+
+/* Vue Liste : une ligne par agent, pour en voir beaucoup sans défiler. */
+.card-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.card-row {
+  display: flex;
+  align-items: center;
+  min-height: 0;
+  padding-right: 4px;
+  border-radius: 10px;
+}
+
+.card-row .card-open {
+  flex: 1;
+  flex-direction: row;
+  gap: 10px;
+  min-width: 0;
+  height: auto;
+  padding: 6px 8px;
+  border-radius: 10px;
+  text-align: left;
+}
+
+.card-row-text {
+  display: flex;
+  flex: 1;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.card-row .card-name {
+  flex: none;
+  margin: 0;
+}
+
+.card-row .card-specialty {
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.card-category {
+  flex: none;
+  padding: 1px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+/* Étoile et menu : à droite de la ligne, plus en surimpression. */
+.card-row .card-icon {
+  position: static;
+  flex: none;
+}
+
+.card-row .card-menu {
+  top: calc(100% - 4px);
+}
+
+/* Confirmation de suppression : sur la ligne elle-même. */
+.card-row .card-confirm {
+  flex-direction: row;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 10px;
+}
+
+.card-row .card-confirm p {
+  overflow: hidden;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Plus discret que les avatars, mais centré sur leur emplacement : le texte reste aligné. */
+.card-row.card-new .card-new-plus {
+  width: 28px;
+  height: 28px;
+  /* 28 + 2 × 4 = 36 px, la place d'un avatar : la ligne garde la hauteur des autres. */
+  margin: 4px;
+}
+
+/* Panneau étroit : la catégorie cède la place au nom et à la spécialité. */
+@media (max-width: 420px) {
+  .card-category {
+    display: none;
+  }
+}

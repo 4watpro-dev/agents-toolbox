@@ -111,3 +111,25 @@ export function PlusIcon(props: IconProps): React.JSX.Element {
     </Icon>
   )
 }
+
+export function GridIcon(props: IconProps): React.JSX.Element {
+  return (
+    <Icon {...props}>
+      <rect x="4" y="4" width="6.5" height="6.5" rx="1.5" />
+      <rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5" />
+      <rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5" />
+      <rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5" />
+    </Icon>
+  )
+}
+
+export function ListIcon(props: IconProps): React.JSX.Element {
+  return (
+    <Icon {...props}>
+      <path d="M9 6.5h11M9 12h11M9 17.5h11" />
+      <circle cx="4.75" cy="6.5" r="0.9" fill="currentColor" />
+      <circle cx="4.75" cy="12" r="0.9" fill="currentColor" />
+      <circle cx="4.75" cy="17.5" r="0.9" fill="currentColor" />
+    </Icon>
+  )
+}
