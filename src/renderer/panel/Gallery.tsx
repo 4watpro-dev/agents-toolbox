@@ -5,7 +5,7 @@ import { MIN_QUERY_LENGTH, type SearchHit } from '../../shared/history'
 import type { TransferResult } from '../../shared/ipc'
 import { AgentCard } from './AgentCard'
 import { ConversationResults } from './ConversationResults'
-import { TeamIcon } from './icons'
+import { PlusIcon, TeamIcon } from './icons'
 
 /** Attente après la dernière frappe avant de chercher dans les conversations. */
 const SEARCH_DELAY_MS = 180
@@ -68,6 +68,8 @@ export function Gallery({
     () => [...new Set<string>([...CATEGORIES, ...agents.map((agent) => agent.category)])],
     [agents]
   )
+  // Pendant une recherche, la carte de création s'efface : seuls les résultats comptent.
+  const searching = query.trim() !== ''
   const visible = useMemo(() => filterAgents(agents, { query, category }), [agents, query, category])
 
   return (
@@ -121,7 +123,7 @@ export function Gallery({
             {transferResult.ok ? transferResult.value.message : transferResult.message}
           </p>
         )}
-        {visible.length > 0 ? (
+        {visible.length > 0 || !searching ? (
           <ul className="card-grid">
             {visible.map((agent) => (
               <AgentCard
@@ -134,6 +136,18 @@ export function Gallery({
                 onToggleFavorite={() => onToggleFavorite(agent)}
               />
             ))}
+            {/* La création prend place dans la grille, à la suite du dernier agent. */}
+            {!searching && (
+              <li className="card card-new">
+                <button type="button" className="card-open" onClick={onCreate}>
+                  <span className="card-new-plus" aria-hidden="true">
+                    <PlusIcon size={24} />
+                  </span>
+                  <span className="card-name">Créer un agent</span>
+                  <span className="card-specialty">{agents.length === 0 ? 'Ton tout premier' : 'À la main ou avec l’IA'}</span>
+                </button>
+              </li>
+            )}
           </ul>
         ) : hits.length === 0 ? (
           <p className="empty">
@@ -147,11 +161,6 @@ export function Gallery({
         {hits.length > 0 && <ConversationResults hits={hits} agents={agents} onOpen={onOpenConversation} />}
       </div>
 
-      <footer className="view-footer">
-        <button type="button" className="button button-primary button-wide" onClick={onCreate}>
-          + Créer un agent
-        </button>
-      </footer>
     </div>
   )
 }

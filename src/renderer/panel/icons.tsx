@@ -103,3 +103,11 @@ export function TeamIcon(props: IconProps): React.JSX.Element {
     </Icon>
   )
 }
+
+export function PlusIcon(props: IconProps): React.JSX.Element {
+  return (
+    <Icon {...props}>
+      <path d="M12 5v14M5 12h14" />
+    </Icon>
+  )
+}

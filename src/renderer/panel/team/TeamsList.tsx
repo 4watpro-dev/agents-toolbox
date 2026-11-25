@@ -1,6 +1,7 @@
 import type { Agent } from '../../../shared/agent'
 import { teamReady, type Team } from '../../../shared/teams'
 import { Avatar } from '../../avatar/Avatar'
+import { PlusIcon } from '../icons'
 
 interface TeamsListProps {
   teams: Team[]
@@ -40,13 +41,12 @@ export function TeamsList({ teams, agents, onBack, onOpen, onCreate }: TeamsList
         <h1>Équipes</h1>
       </header>
       <div className="view-body">
-        {teams.length === 0 ? (
-          <p className="empty">
-            Aucune équipe pour l'instant. Une équipe réunit un chef d'orchestre et 1 à 4 agents, qui travaillent ensemble sur tes
-            demandes.
+        {teams.length === 0 && (
+          <p className="field-hint team-intro">
+            Une équipe réunit un chef d'orchestre et 1 à 4 agents, qui travaillent ensemble sur tes demandes.
           </p>
-        ) : (
-          <ul className="team-cards">
+        )}
+        <ul className="team-cards">
             {teams.map((team) => {
               const ready = teamReady(team, agentIds)
               const members = team.memberIds.filter((id) => agentIds.includes(id))
@@ -66,14 +66,22 @@ export function TeamsList({ teams, agents, onBack, onOpen, onCreate }: TeamsList
                 </li>
               )
             })}
+            {/* La création prend place sous la dernière équipe, au même format. */}
+            <li>
+              <button type="button" className="team-card team-card-new" disabled={agents.length < 2} onClick={onCreate}>
+                <span className="team-card-new-plus" aria-hidden="true">
+                  <PlusIcon size={16} />
+                </span>
+                <span className="team-card-body">
+                  <span className="team-card-name">Créer une équipe</span>
+                  <span className="team-card-meta">
+                    {agents.length < 2 ? 'Il faut au moins deux agents' : 'Un chef d’orchestre et 1 à 4 membres'}
+                  </span>
+                </span>
+              </button>
+            </li>
           </ul>
-        )}
       </div>
-      <footer className="view-footer">
-        <button type="button" className="button button-primary button-wide" disabled={agents.length < 2} onClick={onCreate}>
-          + Créer une équipe
-        </button>
-      </footer>
     </div>
   )
 }

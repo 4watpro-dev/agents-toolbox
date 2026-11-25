@@ -2208,3 +2208,69 @@ textarea.input {
 .message-flash {
   margin-left: 6px;
 }
+
+/* Carte de création : même format que les autres, en pointillés, le « + » au centre. */
+.card-new {
+  border-style: dashed;
+  background: transparent;
+  box-shadow: none;
+}
+
+.card-new .card-open {
+  justify-content: center;
+  gap: 4px;
+}
+
+.card-new-plus,
+.team-card-new-plus {
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--accent-line);
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent);
+  transition:
+    transform 160ms ease,
+    background 160ms ease;
+}
+
+.card-new-plus {
+  width: 52px;
+  height: 52px;
+  margin: 10px 0 8px;
+}
+
+.card-new:hover .card-new-plus,
+.team-card-new:hover:not(:disabled) .team-card-new-plus {
+  background: var(--accent);
+  color: var(--accent-text);
+  transform: scale(1.06);
+}
+
+.team-card-new {
+  border-style: dashed;
+  background: transparent;
+}
+
+.team-card-new:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+/* Même largeur que les avatars superposés d'une équipe : les noms restent alignés. */
+.team-card-new-plus {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  margin-right: 20px;
+}
+
+.team-intro {
+  margin-bottom: 10px;
+}
+
+/* Icône centrée au pixel : un caractère « + » dépendrait de la police. */
+.card-new-plus svg,
+.team-card-new-plus svg {
+  display: block;
+}
