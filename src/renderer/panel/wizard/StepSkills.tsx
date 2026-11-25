@@ -94,7 +94,7 @@ export function StepSkills({ draft, update }: StepProps): React.JSX.Element {
           <>
             <Field
               label="Domaines autorisés (optionnel)"
-              hint="Un par ligne, sous-domaines compris. Sans liste, l'agent peut accéder à tout le web : une page malveillante pourrait alors tenter de lui faire envoyer ailleurs ce qu'il sait."
+              hint="Un par ligne, sous-domaines compris. Ces sites s'ouvrent sans te demander. Pour tout autre site, tu vois l'adresse complète et tu confirmes ; dans une tâche planifiée ou une équipe, il est refusé."
             >
               <textarea
                 className="input"

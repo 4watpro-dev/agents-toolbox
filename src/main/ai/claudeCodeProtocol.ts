@@ -92,6 +92,11 @@ export interface TurnContext {
   connectors: ResolvedConnector[]
   /** Chemin réel du dossier de documents, vérifié. Seul le mode abonnement s'en sert. */
   knowledge?: string | null
+  /**
+   * Quelqu'un regarde le chat : une page hors des domaines autorisés lui est proposée.
+   * Faux pour une tâche programmée ou une équipe : ces pages sont alors refusées.
+   */
+  confirmWeb?: boolean
 }
 
 /** Claude Code efface ses anciennes sessions : la conversation doit pouvoir leur survivre. */

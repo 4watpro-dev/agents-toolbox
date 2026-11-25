@@ -8,6 +8,13 @@ const OUTCOMES: Record<ConfirmationOutcome, string> = {
   cancelled: 'Action annulée : non exécutée'
 }
 
+const WEB_OUTCOMES: Record<ConfirmationOutcome, string> = {
+  approved: 'Page consultée',
+  refused: 'Page refusée',
+  expired: 'Sans réponse à temps : page non consultée',
+  cancelled: 'Page non consultée'
+}
+
 function displayValue(value: unknown): string {
   return typeof value === 'string' ? value : JSON.stringify(value, null, 2)
 }
@@ -30,10 +37,11 @@ export function ActionCard({ action, agentName, onAnswer }: ActionCardProps): Re
   if (action.outcome) {
     return (
       <p className={`chat-waiting action-outcome action-outcome-${action.outcome}`}>
-        {OUTCOMES[action.outcome]} : {action.connector}, {action.tool}
+        {action.kind === 'web' ? WEB_OUTCOMES[action.outcome] : OUTCOMES[action.outcome]} : {action.connector}, {action.tool}
       </p>
     )
   }
+  if (action.kind === 'web') return <WebPageCard action={action} agentName={agentName} onAnswer={onAnswer} />
   const rows = details(action.input)
   return (
     <section className="action-card" role="group" aria-label={`Action à confirmer : ${action.tool}`}>
@@ -60,6 +68,37 @@ export function ActionCard({ action, agentName, onAnswer }: ActionCardProps): Re
         </button>
         <button type="button" className="button button-primary" onClick={() => onAnswer(true)}>
           Confirmer
+        </button>
+      </div>
+    </section>
+  )
+}
+
+/**
+ * Page hors des domaines autorisés. Une page lue plus tôt peut avoir poussé l'agent
+ * à glisser tes données dans l'adresse : l'adresse complète est donc montrée.
+ */
+function WebPageCard({ action, agentName, onAnswer }: ActionCardProps): React.JSX.Element {
+  const address = details(action.input).find(([key]) => key === 'adresse')?.[1] ?? ''
+  return (
+    <section className="action-card" role="group" aria-label={`Page à confirmer : ${action.tool}`}>
+      <h2>{agentName} veut consulter une page</h2>
+      <p className="action-target">
+        Site hors de ta liste : <code>{action.tool}</code>
+      </p>
+      <dl className="action-details">
+        <div>
+          <dt>adresse complète</dt>
+          <dd>{address}</dd>
+        </div>
+      </dl>
+      <p className="field-hint">Vérifie l'adresse : elle ne doit contenir aucune de tes informations. Rien n'est consulté sans ton accord.</p>
+      <div className="action-buttons">
+        <button type="button" className="button" onClick={() => onAnswer(false)}>
+          Refuser
+        </button>
+        <button type="button" className="button button-primary" onClick={() => onAnswer(true)}>
+          Consulter
         </button>
       </div>
     </section>

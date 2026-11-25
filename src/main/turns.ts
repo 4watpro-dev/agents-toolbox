@@ -66,7 +66,8 @@ export function runTurn(request: TurnRequest, deliver: (event: ChatEvent) => voi
     turns: conversation?.messages ?? [],
     resumeId: conversation?.claudeSessionId ?? null,
     connectors,
-    knowledge: knowledge?.path ?? null
+    knowledge: knowledge?.path ?? null,
+    confirmWeb: !request.unattended
   }
 
   const turn = { agentId, visibleText: '', afterTool: false }

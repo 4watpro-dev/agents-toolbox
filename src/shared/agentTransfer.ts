@@ -40,7 +40,13 @@ export function parseAgentsFile(content: string): ParsedAgents | null {
   }
   if (file.version > VERSION) return null
   const results = file.agents.map((agent) => AgentDraftSchema.safeParse(agent))
-  const drafts = results.flatMap((result) => (result.success ? [{ ...result.data, isFavorite: false }] : []))
+  // Un fichier reçu ne peut pas donner accès à ce Mac : ni dossier de documents, ni connecteurs.
+  // La personne les rebranche elle-même dans la fiche de l'agent.
+  const drafts = results.flatMap((result) =>
+    result.success
+      ? [{ ...result.data, isFavorite: false, tools: { ...result.data.tools, knowledgeFolder: null, connectors: [] } }]
+      : []
+  )
   return { drafts, skipped: results.length - drafts.length }
 }
 

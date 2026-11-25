@@ -55,9 +55,9 @@ describe('contrôle des outils web', () => {
     expect(output.updatedInput).toEqual({ query: 'tarifs', allowed_domains: ['brevo.com'] })
   })
 
-  it('laisse tout passer sans liste', async () => {
+  it('sans liste, laisse passer la recherche mais pas une page, faute de quelqu\'un pour confirmer', async () => {
     const open: Policy = { webSearch: true, webFetch: true, allowedDomains: [] }
-    expect((await run(open, 'WebFetch', { url: 'https://example.org/' })).output.permissionDecision).toBe('allow')
+    expect((await run(open, 'WebFetch', { url: 'https://example.org/' })).output.permissionDecision).toBe('deny')
     const { output } = await run(open, 'WebSearch', { query: 'tarifs' })
     expect(output.permissionDecision).toBe('allow')
     expect(output.updatedInput).toBeUndefined()
@@ -139,6 +139,25 @@ describe('contrôle des connecteurs', () => {
       }
     )
     expect(garbage!.status).toBe(2)
+  })
+
+  it("demande à l'app pour une page hors de la liste, avec l'adresse complète", async () => {
+    let result = null as Awaited<ReturnType<typeof run>> | null
+    let listed = null as Awaited<ReturnType<typeof run>> | null
+    const received = await withApp(
+      (_request, reply) => reply('{"decision":"allow","reason":"Confirmé par la personne."}\n'),
+      async () => {
+        result = await run(policy, 'WebFetch', { url: 'https://evil.org/?d=secret', prompt: 'résume' })
+        listed = await run(policy, 'WebFetch', { url: 'https://brevo.com/' })
+      }
+    )
+    expect(received.map((line) => JSON.parse(line))).toEqual([{ runId: 'tour-1', tool: 'WebFetch', input: { url: 'https://evil.org/?d=secret' } }])
+    expect(result!.output.permissionDecision).toBe('allow')
+    expect(listed!.output.permissionDecision).toBe('allow')
+  })
+
+  it("ne demande rien pour une adresse qui ne mène pas au web", async () => {
+    expect((await run(policy, 'WebFetch', { url: 'file:///etc/passwd' })).output.permissionDecision).toBe('deny')
   })
 
   it('refuse un connecteur quand aucun canal n\'est prévu', async () => {

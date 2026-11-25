@@ -5,7 +5,7 @@ import { KNOWLEDGE_TOOLS, type AgentTools } from '../../shared/tools'
  * Contrôle exécuté par Claude Code avant chaque appel d'outil, en mode abonnement.
  * Il tient la liste de domaines, que les règles de Claude Code ne peuvent pas
  * imposer à la recherche, et demande à l'app sa décision sur chaque appel de
- * connecteur. Toute erreur sort avec le code 2, qui bloque l'appel. Si le contrôle
+ * connecteur et sur chaque page hors de cette liste. Toute erreur sort avec le code 2, qui bloque l'appel. Si le contrôle
  * ne répond pas du tout, Claude Code refuse aussi : rien ne lui donne d'autorisation.
  */
 export const TOOL_GUARD_SCRIPT = `'use strict'
@@ -95,8 +95,12 @@ try {
     const url = new URL(input.url)
     const host = url.hostname.toLowerCase().replace(/\\.$/, '')
     const webUrl = url.protocol === 'https:' || url.protocol === 'http:'
-    const allowed = domains.length === 0 || domains.some((domain) => host === domain || host.endsWith('.' + domain))
-    if (webUrl && allowed) decide('allow', 'Domaine autorisé.')
+    const listed = domains.some((domain) => host === domain || host.endsWith('.' + domain))
+    if (!webUrl) decide('deny', 'Seules les pages http et https peuvent être consultées.')
+    else if (listed) decide('allow', 'Domaine autorisé.')
+    // Hors de la liste (ou sans liste) : une page lue plus tôt pourrait avoir glissé tes
+    // données dans l'adresse. La personne voit l'adresse complète et décide.
+    else if (policy.bridge) askApp(policy.bridge, 'WebFetch', { url: url.href })
     else decide('deny', 'Ce domaine ne fait pas partie de ceux autorisés pour cet agent : ' + host)
   } else {
     decide('deny', "Cet outil n'est pas activé pour cet agent.")

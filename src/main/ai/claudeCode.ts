@@ -100,13 +100,7 @@ function launch(binary: string, args: string[], extraEnv: Record<string, string>
   return child
 }
 
-export function sendViaClaudeCode(
-  sessionId: string,
-  agent: AgentDraft,
-  message: OutgoingMessage,
-  emit: Emit,
-  context: TurnContext
-): void {
+export function sendViaClaudeCode(sessionId: string, agent: AgentDraft, message: OutgoingMessage, emit: Emit, context: TurnContext): void {
   if (running.has(sessionId)) return
   const { text, attachments } = message
   const metas = attachments.map((attachment) => attachment.meta)
@@ -123,13 +117,16 @@ export function sendViaClaudeCode(
   const usedResume = session.resumeId !== null
   const prompt = session.resumeId ? text : promptWithHistory(session.turns, text)
   const { mcpConfig, env, labels } = connectorConfig(context.connectors)
-  const toolRun = mcpConfig
-    ? openToolRun({
-        labels,
-        onConfirm: (confirmation) => emit({ sessionId, type: 'confirm', confirmation }),
-        onResolved: (id, outcome) => emit({ sessionId, type: 'confirmed', id, outcome })
-      })
-    : null
+  const confirmWeb = agent.tools.webFetch && context.confirmWeb === true
+  const toolRun =
+    mcpConfig || confirmWeb
+      ? openToolRun({
+          labels,
+          confirmWeb,
+          onConfirm: (confirmation) => emit({ sessionId, type: 'confirm', confirmation }),
+          onResolved: (id, outcome) => emit({ sessionId, type: 'confirmed', id, outcome })
+        })
+      : null
   const knowledge = context.knowledge ?? null
   const guarded = usesWebTools(agent.tools) || toolRun !== null || knowledge !== null
   const web = guarded
@@ -387,7 +384,7 @@ export async function loginToSubscription(): Promise<Result<SubscriptionStatus>>
   return {
     ok: false,
     message: output
-      ? 'La connexion n\'a pas abouti. Réessaie, ou lance « claude auth login » dans un terminal.'
-      : "Impossible de lancer la connexion. Lance « claude auth login » dans un terminal."
+      ? "La connexion n'a pas abouti. Réessaie, ou lance « claude auth login » dans un terminal."
+      : 'Impossible de lancer la connexion. Lance « claude auth login » dans un terminal.'
   }
 }

@@ -42,6 +42,20 @@ describe('parseAgentsFile', () => {
     expect(parseAgentsFile(serializeAgents([agent()]))?.drafts[0].isFavorite).toBe(false)
   })
 
+  it("n'importe ni dossier de documents ni connecteur, même ajoutés à la main dans le fichier", () => {
+    const file = JSON.parse(serializeAgents([agent()]))
+    file.agents[0].tools = {
+      ...file.agents[0].tools,
+      webFetch: true,
+      knowledgeFolder: '/Users/quelquun/Documents',
+      connectors: ['6f1c2b9e-1d2a-4c3b-9e8f-0a1b2c3d4e5f']
+    }
+    const tools = parseAgentsFile(JSON.stringify(file))?.drafts[0].tools
+    expect(tools?.knowledgeFolder).toBeNull()
+    expect(tools?.connectors).toEqual([])
+    expect(tools?.webFetch).toBe(true)
+  })
+
   it('ignore une fiche invalide sans perdre les autres', () => {
     const file = JSON.parse(serializeAgents([agent()]))
     file.agents.push({ ...file.agents[0], model: 'modele-inconnu' }, { name: 'incomplet' })

@@ -83,6 +83,8 @@ export interface Confirmation {
   connector: string
   tool: string
   input: unknown
+  /** `web` : une page hors des domaines autorisés, que l'agent veut consulter. */
+  kind?: 'connector' | 'web'
 }
 
 export type ConfirmationOutcome = 'approved' | 'refused' | 'expired' | 'cancelled'
