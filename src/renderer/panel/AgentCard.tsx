@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react'
 import type { Agent } from '../../shared/agent'
 import { Avatar } from '../avatar/Avatar'
+import { HeartIcon } from './icons'
 import { useEscape } from './useEscape'
 
 /** `grid` : grande carte. `list` : ligne compacte, pour qui a beaucoup d'agents. */
@@ -62,7 +63,7 @@ export function AgentCard({ agent, layout = 'grid', onOpen, onEdit, onExport, on
         aria-pressed={agent.isFavorite}
         onClick={onToggleFavorite}
       >
-        {agent.isFavorite ? '★' : '☆'}
+        <HeartIcon size={15} filled={agent.isFavorite} />
       </button>
 
       <button

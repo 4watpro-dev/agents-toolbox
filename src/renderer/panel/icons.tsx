@@ -133,3 +133,15 @@ export function ListIcon(props: IconProps): React.JSX.Element {
     </Icon>
   )
 }
+
+/** Cœur des favoris : au trait, ou plein quand l'agent est en favori. */
+export function HeartIcon({ filled = false, ...props }: IconProps & { filled?: boolean }): React.JSX.Element {
+  return (
+    <Icon {...props}>
+      <path
+        d="M12 19.5s-7-4.35-7-9.4A3.9 3.9 0 0 1 12 7.6a3.9 3.9 0 0 1 7 2.5c0 5.05-7 9.4-7 9.4z"
+        fill={filled ? 'currentColor' : 'none'}
+      />
+    </Icon>
+  )
+}

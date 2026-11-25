@@ -475,8 +475,14 @@ textarea.input {
   left: 5px;
 }
 
+/* Cœur des favoris : centré, et vert citron une fois rempli. */
+.card-star {
+  display: grid;
+  place-items: center;
+}
+
 .card-star.is-on {
-  color: var(--star);
+  color: var(--accent);
 }
 
 .card-more {
