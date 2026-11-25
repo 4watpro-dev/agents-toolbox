@@ -13,6 +13,7 @@ export function GenerateBox({ draft, onGenerated }: GenerateBoxProps): React.JSX
   const [previous, setPrevious] = useState<AgentDraft | null>(null)
   // Une demande annulée peut encore aboutir : son résultat doit alors être ignoré.
   const requestId = useRef(0)
+  const field = useRef<HTMLTextAreaElement>(null)
 
   async function generate(): Promise<void> {
     const id = ++requestId.current
@@ -31,29 +32,43 @@ export function GenerateBox({ draft, onGenerated }: GenerateBoxProps): React.JSX
     }
   }
 
+  const canGenerate = description.trim() !== ''
+
   return (
+    // Même rendu que sur la landing page : une carte, la phrase, et le bouton citron.
     <section className="generate">
-      <label className="field">
-        <span className="field-label">Générer avec l'IA</span>
-        <textarea
-          className="input"
-          rows={2}
-          maxLength={2000}
-          placeholder="ex. : un ancien marin bourru qui m'aide à rédiger mes e-mails"
-          value={description}
-          disabled={loading}
-          onChange={(event) => setDescription(event.target.value)}
-        />
-      </label>
+      <textarea
+        ref={field}
+        className="generate-input"
+        rows={2}
+        maxLength={2000}
+        aria-label="Décris l'agent à générer avec l'IA"
+        placeholder="Un agent qui transforme mes notes en newsletter…"
+        value={description}
+        disabled={loading}
+        onChange={(event) => setDescription(event.target.value)}
+        onKeyDown={(event) => {
+          // ⌘↩ lance la génération sans quitter le clavier.
+          if (event.key === 'Enter' && event.metaKey && canGenerate && !loading) {
+            event.preventDefault()
+            void generate()
+          }
+        }}
+      />
       <div className="generate-actions">
         {loading ? (
           <>
-            <span className="field-hint" role="status">
-              Création du personnage…
+            <span className="generate-pill is-loading" role="status">
+              ✦ Création du personnage
+              <span className="working-dots" aria-hidden="true">
+                <i />
+                <i />
+                <i />
+              </span>
             </span>
             <button
               type="button"
-              className="button"
+              className="generate-link"
               onClick={() => {
                 requestId.current++
                 setLoading(false)
@@ -64,10 +79,21 @@ export function GenerateBox({ draft, onGenerated }: GenerateBoxProps): React.JSX
           </>
         ) : (
           <>
+            <button
+              type="button"
+              className="generate-pill"
+              onClick={() => {
+                // Toujours vif, comme sur la landing : sans description, il invite à en écrire une.
+                if (canGenerate) void generate()
+                else field.current?.focus()
+              }}
+            >
+              ✦ Générer avec l’IA
+            </button>
             {previous ? (
               <button
                 type="button"
-                className="button"
+                className="generate-link"
                 onClick={() => {
                   onGenerated(previous)
                   setPrevious(null)
@@ -76,11 +102,8 @@ export function GenerateBox({ draft, onGenerated }: GenerateBoxProps): React.JSX
                 Annuler le préremplissage
               </button>
             ) : (
-              <span className="field-hint">Préremplit les 4 étapes.</span>
+              <span className="generate-hint">Préremplit les 4 étapes</span>
             )}
-            <button type="button" className="button" disabled={!description.trim()} onClick={() => void generate()}>
-              Générer
-            </button>
           </>
         )}
       </div>

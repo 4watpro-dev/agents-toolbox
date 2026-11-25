@@ -1350,28 +1350,103 @@ textarea.input {
 }
 
 /* Générer avec l'IA */
+/* « Générer avec l'IA » : fidèle à la landing page (carte translucide, pilule citron). */
 .generate {
   display: flex;
   flex-direction: column;
-  gap: 7px;
-  padding: 9px;
+  gap: 12px;
+  padding: 14px 16px 16px;
   border: 1px solid var(--border);
-  border-radius: 10px;
-  background: var(--surface-2);
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: var(--highlight);
+}
+
+.generate-input {
+  width: 100%;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.5;
+  resize: none;
+}
+
+.generate-input::placeholder {
+  color: var(--muted);
 }
 
 .generate-actions {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+  gap: 10px 14px;
 }
 
-.generate-actions .button {
-  flex: none;
-  padding: 3px 9px;
-  background: var(--field);
+.generate-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  white-space: nowrap;
+  box-shadow: 0 10px 30px -10px rgb(200 240 49 / 55%);
+  cursor: pointer;
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease,
+    opacity 160ms ease;
+}
+
+.generate-pill:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 36px -10px rgb(200 240 49 / 70%);
+}
+
+.generate-pill:disabled {
+  box-shadow: none;
+  cursor: default;
+  opacity: 0.45;
+}
+
+.generate-pill.is-loading {
+  cursor: default;
+}
+
+.generate-pill .working-dots i {
+  background: var(--accent-text);
+}
+
+.generate-hint {
+  color: var(--muted);
   font-size: 12px;
+}
+
+.generate-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 12px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.generate-link:hover {
+  color: var(--text);
 }
 
 /* Assistant */
