@@ -726,16 +726,41 @@ textarea.input {
   color: var(--muted);
 }
 
+/*
+ * Tableaux : les mots ne se coupent jamais au milieu. Une colonne ne descend pas
+ * sous son mot le plus long ; si le tableau ne tient pas, il défile à l'horizontale.
+ */
 .message-body table {
   display: block;
+  max-width: 100%;
   overflow-x: auto;
   border-collapse: collapse;
+  overflow-wrap: normal;
+  word-break: normal;
+  font-size: 12.5px;
+  line-height: 1.4;
+  scrollbar-width: thin;
 }
 
 .message-body th,
 .message-body td {
-  padding: 3px 7px;
+  padding: 5px 9px;
   border: 1px solid var(--border);
+  text-align: left;
+  vertical-align: top;
+}
+
+/* En-têtes sur une ligne : « Car. » reste lisible. */
+.message-body th {
+  background: var(--border);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Colonnes de texte : assez larges pour se lire, sans écraser les autres. */
+.message-body td {
+  min-width: 4ch;
+  max-width: 36ch;
 }
 
 .message-copy {
