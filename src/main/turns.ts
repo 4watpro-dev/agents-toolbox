@@ -6,7 +6,7 @@ import type { PreparedAttachment } from './ai/attachments'
 import { resetSession, sendMessage } from './ai/chat'
 import { claudeResumeId, resetClaudeCodeSession, sendViaClaudeCode } from './ai/claudeCode'
 import { resolveKnowledgeFolder } from './knowledge'
-import { resolveConnectors } from './store/connectors'
+import { listConnectors, resolveConnectors } from './store/connectors'
 import { appendTurns, getConversation, getFacts, rememberFacts, setClaudeSession } from './store/conversations'
 import { getSettings } from './store/settings'
 
@@ -51,24 +51,12 @@ export function runTurn(request: TurnRequest, deliver: (event: ChatEvent) => voi
 
   const conversation = agentId && !request.ephemeral ? getConversation(agentId, sessionId) : null
   const facts = agentId ? getFacts(agentId) : []
-  const wanted = resolveConnectors(draft.tools.connectors)
   // L'API exécuterait les actions de ses connecteurs sans passer par une confirmation.
-  const connectors = usesSubscription() && !request.unattended ? wanted : []
+  const connectorsAllowed = usesSubscription() && !request.unattended
+  const wantedCount = listConnectors().filter((connector) => draft.tools.connectors.includes(connector.id)).length
   // Dossier de documents : lu par les outils de Claude Code, donc en mode abonnement seulement.
   const folder = draft.tools.knowledgeFolder ? resolveKnowledgeFolder(draft.tools.knowledgeFolder) : null
   const knowledge = folder?.ok && usesSubscription() ? folder : null
-  const context = {
-    systemPrompt: buildSystemPrompt(draft, facts, {
-      remember: agentId !== null && !request.ephemeral,
-      connectors: connectors.map((c) => c.name),
-      knowledge: knowledge?.name ?? null
-    }),
-    turns: conversation?.messages ?? [],
-    resumeId: conversation?.claudeSessionId ?? null,
-    connectors,
-    knowledge: knowledge?.path ?? null,
-    confirmWeb: !request.unattended
-  }
 
   const turn = { agentId, visibleText: '', afterTool: false }
   activeTurns.set(sessionId, turn)
@@ -107,22 +95,54 @@ export function runTurn(request: TurnRequest, deliver: (event: ChatEvent) => voi
     deliver(outgoing)
   }
 
-  if (wanted.length > connectors.length) {
-    emit({
-      sessionId,
-      type: 'notice',
-      text: request.unattended
-        ? "Les connecteurs ne servent pas aux tâches programmées : leurs actions demandent ta confirmation."
-        : "Les connecteurs sont désactivés en mode clé API, faute de pouvoir y demander ta confirmation. Repasse sur ton abonnement pour t'en servir."
-    })
-  }
-  if (folder && !folder.ok) emit({ sessionId, type: 'notice', text: `${folder.message} L'agent répond sans ses documents.` })
-  else if (folder && !usesSubscription()) {
-    emit({ sessionId, type: 'notice', text: "Le dossier de documents ne fonctionne qu'avec ton abonnement : l'agent répond sans ses documents en mode clé API." })
-  }
-  const message = { text, attachments }
-  if (usesSubscription()) sendViaClaudeCode(sessionId, draft, message, emit, context)
-  else void sendMessage(sessionId, draft, message, emit, context)
+  // Les jetons OAuth se rafraîchissent par le réseau : le tour démarre juste après.
+  void (async () => {
+    let resolved: Awaited<ReturnType<typeof resolveConnectors>> = { connectors: [], needsLogin: [] }
+    try {
+      if (connectorsAllowed) resolved = await resolveConnectors(draft.tools.connectors)
+    } catch {
+      emit({ sessionId, type: 'error', failure: { code: 'unknown', message: "Les connecteurs n'ont pas pu être préparés. Réessaie." } })
+      return
+    }
+    const { connectors, needsLogin } = resolved
+    if (activeTurns.get(sessionId) !== turn) return
+    const context = {
+      systemPrompt: buildSystemPrompt(draft, facts, {
+        remember: agentId !== null && !request.ephemeral,
+        connectors: connectors.map((c) => c.name),
+        knowledge: knowledge?.name ?? null
+      }),
+      turns: conversation?.messages ?? [],
+      resumeId: conversation?.claudeSessionId ?? null,
+      connectors,
+      knowledge: knowledge?.path ?? null,
+      confirmWeb: !request.unattended
+    }
+
+    if (!connectorsAllowed && wantedCount > 0) {
+      emit({
+        sessionId,
+        type: 'notice',
+        text: request.unattended
+          ? "Les connecteurs ne servent pas aux tâches programmées : leurs actions demandent ta confirmation."
+          : "Les connecteurs sont désactivés en mode clé API, faute de pouvoir y demander ta confirmation. Repasse sur ton abonnement pour t'en servir."
+      })
+    }
+    if (needsLogin.length > 0) {
+      emit({
+        sessionId,
+        type: 'notice',
+        text: `${needsLogin.join(', ')} : connexion requise. Clique « Se connecter » dans la fiche de l'agent (Modifier › Compétences) ou dans Réglages › Connecteurs MCP. L'agent répond sans ce connecteur.`
+      })
+    }
+    if (folder && !folder.ok) emit({ sessionId, type: 'notice', text: `${folder.message} L'agent répond sans ses documents.` })
+    else if (folder && !usesSubscription()) {
+      emit({ sessionId, type: 'notice', text: "Le dossier de documents ne fonctionne qu'avec ton abonnement : l'agent répond sans ses documents en mode clé API." })
+    }
+    const message = { text, attachments }
+    if (usesSubscription()) sendViaClaudeCode(sessionId, draft, message, emit, context)
+    else void sendMessage(sessionId, draft, message, emit, context)
+  })()
   return true
 }
 

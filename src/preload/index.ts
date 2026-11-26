@@ -83,7 +83,9 @@ const api: ToolboxApi = {
   connectors: {
     list: () => ipcRenderer.invoke(IPC.connectorsList),
     save: (id, input) => ipcRenderer.invoke(IPC.connectorsSave, id, input),
-    remove: (id) => ipcRenderer.invoke(IPC.connectorsRemove, id)
+    remove: (id) => ipcRenderer.invoke(IPC.connectorsRemove, id),
+    login: (id) => ipcRenderer.invoke(IPC.connectorsLogin, id),
+    logout: (id) => ipcRenderer.invoke(IPC.connectorsLogout, id)
   },
   team: {
     list: () => ipcRenderer.invoke(IPC.teamsList),

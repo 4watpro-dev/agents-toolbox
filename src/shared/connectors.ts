@@ -16,14 +16,21 @@ function isAcceptableUrl(value: string): boolean {
 export const ConnectorSchema = z.object({
   id: z.uuid(),
   name: z.string().trim().min(1).max(40),
-  url: z.string().trim().max(500).refine(isAcceptableUrl)
+  url: z.string().trim().max(500).refine(isAcceptableUrl),
+  /**
+   * `token` : jeton collé à la main (ou aucun, pour un serveur ouvert).
+   * `oauth` : le serveur a demandé une connexion OAuth ; l'app obtient et rafraîchit les jetons.
+   */
+  auth: z.enum(['token', 'oauth']).default('token')
 })
 
 export type StoredConnector = z.infer<typeof ConnectorSchema>
 
-/** Ce que voit l'interface : le jeton reste dans le process principal. */
+/** Ce que voit l'interface : les jetons restent dans le process principal. */
 export interface Connector extends StoredConnector {
   hasToken: boolean
+  /** Mode OAuth : une autorisation valide est enregistrée. */
+  connected: boolean
 }
 
 export interface ConnectorInput {

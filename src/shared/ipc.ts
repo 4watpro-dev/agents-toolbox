@@ -70,6 +70,8 @@ export const IPC = {
   connectorsList: 'connectors:list',
   connectorsSave: 'connectors:save',
   connectorsRemove: 'connectors:remove',
+  connectorsLogin: 'connectors:login',
+  connectorsLogout: 'connectors:logout',
   providerGet: 'provider:get',
   providerSet: 'provider:set',
   subscriptionStatus: 'subscription:status',
@@ -283,6 +285,9 @@ export interface ConnectorsApi {
   /** `id` nul : ajoute un connecteur. */
   save(id: string | null, input: ConnectorInput): Promise<Result<Connector>>
   remove(id: string): Promise<void>
+  /** Connexion OAuth dans le navigateur du Mac ; se termine quand le navigateur a répondu. */
+  login(id: string): Promise<Result<Connector>>
+  logout(id: string): Promise<void>
 }
 
 export interface ConnectionApi {

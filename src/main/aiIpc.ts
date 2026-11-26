@@ -18,7 +18,10 @@ import { createClient, resetClient } from './ai/client'
 import { classifyError } from './ai/errors'
 import { generateAgent } from './ai/generate'
 import { answerConfirmation } from './ai/toolBridge'
-import { listConnectors, removeConnector, saveConnector } from './store/connectors'
+import { getConnector, listConnectors, removeConnector, saveConnector } from './store/connectors'
+import { loginConnector, logoutConnector, offersOAuth } from './oauth/connectorLogin'
+import { OAuthError } from './oauth/mcpOAuth'
+import { openPanel } from './windows'
 import {
   allConversations,
   deleteConversation,
@@ -116,14 +119,41 @@ export function registerAiIpc(): void {
   })
 
   ipcMain.handle(IPC.connectorsList, () => listConnectors())
-  ipcMain.handle(IPC.connectorsSave, (_event, id: unknown, input: unknown): Result<Connector> => {
+  ipcMain.handle(IPC.connectorsSave, async (_event, id: unknown, input: unknown): Promise<Result<Connector>> => {
     const parsed = ConnectorInputSchema.safeParse(input)
     if (!parsed.success) {
       return { ok: false, message: "Vérifie le nom et l'adresse : https obligatoire, sans identifiant ni jeton dans l'adresse." }
     }
-    return saveConnector(id === null ? null : z.uuid().parse(id), parsed.data)
+    const connectorId = id === null ? null : z.uuid().parse(id)
+    const existing = connectorId ? listConnectors().find((connector) => connector.id === connectorId) : undefined
+    const sameServer = existing !== undefined && existing.url === parsed.data.url && parsed.data.token === null
+    // Un jeton saisi garde le mode jeton. Sinon, un 401 avec découverte OAuth propose « Se connecter ».
+    const auth = parsed.data.token
+      ? 'token'
+      : sameServer && (existing.auth === 'oauth' || existing.hasToken)
+        ? existing.auth
+        : (await offersOAuth(parsed.data.url))
+          ? 'oauth'
+          : 'token'
+    return saveConnector(connectorId, parsed.data, auth)
   })
   ipcMain.handle(IPC.connectorsRemove, (_event, id: unknown) => removeConnector(z.uuid().parse(id)))
+  ipcMain.handle(IPC.connectorsLogin, async (_event, id: unknown): Promise<Result<Connector>> => {
+    const connector = getConnector(z.uuid().parse(id))
+    if (!connector || connector.auth !== 'oauth') return { ok: false, message: 'Ce connecteur ne se connecte pas par OAuth.' }
+    if (!canStoreSecrets()) return { ok: false, message: "Le trousseau macOS est indisponible : les jetons ne pourraient pas être chiffrés." }
+    try {
+      await loginConnector(connector)
+    } catch (error) {
+      return { ok: false, message: error instanceof OAuthError ? error.message : "La connexion n'a pas abouti. Réessaie." }
+    } finally {
+      // Retour au panneau, que la connexion ait réussi ou non : le navigateur a pris le premier plan.
+      openPanel()
+    }
+    const value = listConnectors().find((other) => other.id === connector.id)
+    return value ? { ok: true, value } : { ok: false, message: 'Ce connecteur a été supprimé.' }
+  })
+  ipcMain.handle(IPC.connectorsLogout, (_event, id: unknown) => logoutConnector(z.uuid().parse(id)))
 
   ipcMain.handle(IPC.conversationsList, (_event, agentId: unknown) => listConversations(AgentIdSchema.parse(agentId)))
   ipcMain.handle(IPC.conversationsGet, (_event, agentId: unknown, id: unknown) =>

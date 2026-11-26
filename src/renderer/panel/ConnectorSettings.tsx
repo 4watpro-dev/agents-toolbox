@@ -10,6 +10,10 @@ export function ConnectorSettings(): React.JSX.Element {
   const [editing, setEditing] = useState<Connector | null | undefined>(undefined)
   const [error, setError] = useState<string | null>(null)
   const [removing, setRemoving] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
+  /** Connecteur dont la connexion OAuth est en cours dans le navigateur. */
+  const [signingIn, setSigningIn] = useState<string | null>(null)
+  const [loginError, setLoginError] = useState<{ id: string; message: string } | null>(null)
 
   async function refresh(): Promise<void> {
     setConnectors(await window.toolbox.connectors.list())
@@ -29,13 +33,30 @@ export function ConnectorSettings(): React.JSX.Element {
     event.preventDefault()
     // En modification, un champ vide garde le jeton enregistré.
     const token = form.token.trim() || (editing ? null : '')
+    setSaving(true)
+    // Sans jeton, l'app interroge le serveur : s'il demande OAuth, « Se connecter » apparaît.
     const result = await window.toolbox.connectors.save(editing?.id ?? null, { name: form.name, url: form.url, token })
+    setSaving(false)
     if (!result.ok) {
       setError(result.message)
       return
     }
     setEditing(undefined)
     setForm(EMPTY_FORM)
+    await refresh()
+  }
+
+  async function login(id: string): Promise<void> {
+    setSigningIn(id)
+    setLoginError(null)
+    const result = await window.toolbox.connectors.login(id)
+    setSigningIn(null)
+    if (!result.ok) setLoginError({ id, message: result.message })
+    await refresh()
+  }
+
+  async function logout(id: string): Promise<void> {
+    await window.toolbox.connectors.logout(id)
     await refresh()
   }
 
@@ -61,7 +82,22 @@ export function ConnectorSettings(): React.JSX.Element {
               <div className="connector-info">
                 <strong>{connector.name}</strong>
                 <span className="field-hint">{connector.url}</span>
-                <span className="field-hint">{connector.hasToken ? 'Jeton enregistré, chiffré' : 'Sans jeton'}</span>
+                {connector.auth === 'oauth' ? (
+                  <span className={connector.connected ? 'connector-status is-on' : 'connector-status'}>
+                    {signingIn === connector.id
+                      ? 'Termine la connexion dans ton navigateur…'
+                      : connector.connected
+                        ? 'Connecté par OAuth, jetons chiffrés'
+                        : 'Connexion requise'}
+                  </span>
+                ) : (
+                  <span className="field-hint">{connector.hasToken ? 'Jeton enregistré, chiffré' : 'Sans jeton'}</span>
+                )}
+                {loginError?.id === connector.id && (
+                  <span className="form-error" role="alert">
+                    {loginError.message}
+                  </span>
+                )}
               </div>
               {removing === connector.id ? (
                 <div className="connector-actions">
@@ -74,6 +110,21 @@ export function ConnectorSettings(): React.JSX.Element {
                 </div>
               ) : (
                 <div className="connector-actions">
+                  {connector.auth === 'oauth' &&
+                    (connector.connected ? (
+                      <button type="button" className="button" disabled={signingIn !== null} onClick={() => void logout(connector.id)}>
+                        Se déconnecter
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        className="button button-primary"
+                        disabled={signingIn !== null}
+                        onClick={() => void login(connector.id)}
+                      >
+                        {signingIn === connector.id ? 'Connexion…' : 'Se connecter'}
+                      </button>
+                    ))}
                   <button type="button" className="button" onClick={() => open(connector)}>
                     Modifier
                   </button>
@@ -117,6 +168,10 @@ export function ConnectorSettings(): React.JSX.Element {
               value={form.token}
               onChange={(event) => setForm({ ...form, token: event.target.value })}
             />
+            <span className="field-hint">
+              Laisse vide si le serveur propose une connexion OAuth : un bouton « Se connecter » apparaîtra, et l'app renouvellera
+              l'accès toute seule.
+            </span>
           </label>
           {error && (
             <p className="form-error" role="alert">
@@ -127,8 +182,8 @@ export function ConnectorSettings(): React.JSX.Element {
             <button type="button" className="button" onClick={() => setEditing(undefined)}>
               Annuler
             </button>
-            <button type="submit" className="button button-primary" disabled={!form.name.trim() || !form.url.trim()}>
-              Enregistrer
+            <button type="submit" className="button button-primary" disabled={saving || !form.name.trim() || !form.url.trim()}>
+              {saving ? 'Vérification…' : 'Enregistrer'}
             </button>
           </div>
         </form>

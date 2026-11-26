@@ -7,10 +7,7 @@ import { FolderIcon } from '../icons'
 import { Field, Options, type StepProps } from './fields'
 
 const EFFORT_IDS = EFFORTS.map((effort) => effort.id)
-const EFFORT_LABELS = Object.fromEntries(EFFORTS.map((effort) => [effort.id, effort.label])) as Record<
-  AgentDraft['effort'],
-  string
->
+const EFFORT_LABELS = Object.fromEntries(EFFORTS.map((effort) => [effort.id, effort.label])) as Record<AgentDraft['effort'], string>
 
 export function StepSkills({ draft, update }: StepProps): React.JSX.Element {
   const [advanced, setAdvanced] = useState(draft.systemPromptOverride !== undefined)
@@ -30,6 +27,19 @@ export function StepSkills({ draft, update }: StepProps): React.JSX.Element {
   useEffect(() => {
     void window.toolbox.connectors.list().then(setConnectors)
   }, [])
+
+  /** Connexion OAuth lancée d'ici même : le navigateur s'ouvre, puis la liste se met à jour. */
+  const [signingIn, setSigningIn] = useState<string | null>(null)
+  const [loginError, setLoginError] = useState<{ id: string; message: string } | null>(null)
+
+  async function login(id: string): Promise<void> {
+    setSigningIn(id)
+    setLoginError(null)
+    const result = await window.toolbox.connectors.login(id)
+    setSigningIn(null)
+    if (!result.ok) setLoginError({ id, message: result.message })
+    setConnectors(await window.toolbox.connectors.list())
+  }
 
   return (
     <>
@@ -109,7 +119,8 @@ export function StepSkills({ draft, update }: StepProps): React.JSX.Element {
               />
             </Field>
             <p className="field-hint">
-              Avec ton abonnement, c'est compris dans ton forfait. Avec une clé API, chaque recherche coûte 10 $ les 1 000, plus les jetons des pages lues.
+              Avec ton abonnement, c'est compris dans ton forfait. Avec une clé API, chaque recherche coûte 10 $ les 1 000, plus les jetons
+              des pages lues.
             </p>
           </>
         )}
@@ -138,8 +149,8 @@ export function StepSkills({ draft, update }: StepProps): React.JSX.Element {
           </p>
         )}
         <p className="field-hint">
-          L'agent cherche et lit les fichiers utiles de ce dossier (texte, PDF, images), sans jamais rien y modifier ni lire ailleurs.
-          Avec ton abonnement uniquement. Le chemin n'est pas inclus quand tu exportes l'agent.
+          L'agent cherche et lit les fichiers utiles de ce dossier (texte, PDF, images), sans jamais rien y modifier ni lire ailleurs. Avec
+          ton abonnement uniquement. Le chemin n'est pas inclus quand tu exportes l'agent.
         </p>
         <span className="field-label tools-group">Connecteurs MCP</span>
         {connectors.length === 0 ? (
@@ -147,34 +158,55 @@ export function StepSkills({ draft, update }: StepProps): React.JSX.Element {
         ) : (
           <>
             {connectors.map((connector) => (
-              <label key={connector.id} className="tool-option">
-                <input
-                  type="checkbox"
-                  checked={tools.connectors.includes(connector.id)}
-                  onChange={(event) =>
-                    update({
-                      tools: {
-                        ...tools,
-                        connectors: event.target.checked
-                          ? [...tools.connectors, connector.id]
-                          : tools.connectors.filter((id) => id !== connector.id)
-                      }
-                    })
-                  }
-                />
-                {connector.name}
-              </label>
+              <div key={connector.id} className="connector-option">
+                <label className="tool-option">
+                  <input
+                    type="checkbox"
+                    checked={tools.connectors.includes(connector.id)}
+                    onChange={(event) =>
+                      update({
+                        tools: {
+                          ...tools,
+                          connectors: event.target.checked
+                            ? [...tools.connectors, connector.id]
+                            : tools.connectors.filter((id) => id !== connector.id)
+                        }
+                      })
+                    }
+                  />
+                  {connector.name}
+                </label>
+                {connector.auth === 'oauth' &&
+                  (connector.connected ? (
+                    <span className="connector-status is-on">Connecté</span>
+                  ) : (
+                    <>
+                      <span className="connector-status">
+                        {signingIn === connector.id ? 'Termine la connexion dans ton navigateur…' : 'Connexion requise'}
+                      </span>
+                      <button
+                        type="button"
+                        className={tools.connectors.includes(connector.id) ? 'button button-primary button-small' : 'button button-small'}
+                        disabled={signingIn !== null}
+                        onClick={() => void login(connector.id)}
+                      >
+                        {signingIn === connector.id ? 'Connexion…' : 'Se connecter'}
+                      </button>
+                    </>
+                  ))}
+                {loginError?.id === connector.id && (
+                  <p className="form-error connector-option-error" role="alert">
+                    {loginError.message}
+                  </p>
+                )}
+              </div>
             ))}
             <p className="field-hint">Les lectures passent directement. Toute autre action demande ton clic dans le chat.</p>
           </>
         )}
       </fieldset>
 
-      <details
-        className="advanced"
-        open={advanced}
-        onToggle={(event) => setAdvanced(event.currentTarget.open)}
-      >
+      <details className="advanced" open={advanced} onToggle={(event) => setAdvanced(event.currentTarget.open)}>
         <summary>Mode avancé : prompt système</summary>
         <textarea
           className="input input-code"
