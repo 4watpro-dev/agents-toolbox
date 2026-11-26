@@ -15,6 +15,17 @@ const PROTOCOL_VERSION = '2026-07-28'
 
 export class OAuthError extends Error {}
 
+/**
+ * Identité publique de l'app (Client ID Metadata Document) : un document servi par la
+ * landing, qui donne au serveur d'autorisation le nom, le logo et les seuls retours permis.
+ * Méthode recommandée par la spécification ; l'enregistrement dynamique reste en secours.
+ */
+export const CIMD_CLIENT_ID = 'https://agenttoolbox.netlify.app/oauth/client.json'
+/** Ports de retour déclarés dans ce document, essayés dans l'ordre. */
+export const CIMD_PORTS = [47215, 47216, 47217] as const
+
+export const loopbackRedirect = (port: number): string => `http://127.0.0.1:${port}/callback`
+
 export interface Challenge {
   resourceMetadata: string | null
   scope: string | null
@@ -31,8 +42,12 @@ export interface AuthServer {
   authorizationEndpoint: string
   tokenEndpoint: string
   registrationEndpoint: string | null
+  /** Révocation des jetons (RFC 7009), si le serveur la propose. */
+  revocationEndpoint: string | null
   scopesSupported: string[]
   issParameterSupported: boolean
+  /** Le serveur accepte une adresse HTTPS comme identifiant d'app (CIMD). */
+  cimdSupported: boolean
 }
 
 export interface ClientRegistration {
@@ -197,8 +212,10 @@ export async function discoverAuthServer(fetchImpl: Fetch, issuer: string): Prom
       authorizationEndpoint: requireHttps(metadata['authorization_endpoint'], "adresse d'autorisation"),
       tokenEndpoint: requireHttps(metadata['token_endpoint'], 'adresse des jetons'),
       registrationEndpoint: metadata['registration_endpoint'] ? requireHttps(metadata['registration_endpoint'], "adresse d'enregistrement") : null,
+      revocationEndpoint: metadata['revocation_endpoint'] ? requireHttps(metadata['revocation_endpoint'], 'adresse de révocation') : null,
       scopesSupported: strings(metadata['scopes_supported']),
-      issParameterSupported: metadata['authorization_response_iss_parameter_supported'] === true
+      issParameterSupported: metadata['authorization_response_iss_parameter_supported'] === true,
+      cimdSupported: metadata['client_id_metadata_document_supported'] === true
     }
   }
   throw new OAuthError("Impossible de trouver la configuration du serveur d'autorisation.")
@@ -231,6 +248,11 @@ export async function registerClient(fetchImpl: Fetch, server: AuthServer, redir
     clientSecret: typeof body['client_secret'] === 'string' ? body['client_secret'] : null,
     redirectUri
   }
+}
+
+/** Identifiant d'app CIMD : rien à enregistrer, le serveur lit le document lui-même. */
+export function cimdClient(server: AuthServer, port: (typeof CIMD_PORTS)[number]): ClientRegistration {
+  return { issuer: server.issuer, clientId: CIMD_CLIENT_ID, clientSecret: null, redirectUri: loopbackRedirect(port) }
 }
 
 const base64url = (buffer: Buffer): string => buffer.toString('base64url')
@@ -346,4 +368,35 @@ export async function refreshGrant(fetchImpl: Fetch, grant: OAuthGrant): Promise
     grant.clientId
   )
   return { ...grant, ...fresh, refreshToken: fresh.refreshToken ?? grant.refreshToken, scope: fresh.scope ?? grant.scope }
+}
+
+/**
+ * Révoque le jeton de rafraîchissement puis le jeton d'accès (RFC 7009). Sans adresse de
+ * révocation, rien n'est envoyé. Renvoie vrai si le serveur a confirmé chaque révocation.
+ */
+export async function revokeGrant(fetchImpl: Fetch, revocationEndpoint: string | null, grant: OAuthGrant): Promise<boolean> {
+  if (!revocationEndpoint) return false
+  const tokens: [string, string][] = [
+    ...(grant.refreshToken ? [[grant.refreshToken, 'refresh_token'] as [string, string]] : []),
+    [grant.accessToken, 'access_token']
+  ]
+  let confirmed = true
+  for (const [token, hint] of tokens) {
+    const headers: Record<string, string> = { 'Content-Type': 'application/x-www-form-urlencoded' }
+    const form: Record<string, string> = { token, token_type_hint: hint }
+    if (grant.clientSecret) {
+      headers['Authorization'] = `Basic ${Buffer.from(`${encodeURIComponent(grant.clientId)}:${encodeURIComponent(grant.clientSecret)}`).toString('base64')}`
+    } else {
+      form['client_id'] = grant.clientId
+    }
+    try {
+      const response = await request(fetchImpl, revocationEndpoint, { method: 'POST', headers, body: new URLSearchParams(form).toString() })
+      void response.body?.cancel()
+      // RFC 7009 §2.2 : 200 même pour un jeton déjà invalide.
+      if (!response.ok) confirmed = false
+    } catch {
+      confirmed = false
+    }
+  }
+  return confirmed
 }

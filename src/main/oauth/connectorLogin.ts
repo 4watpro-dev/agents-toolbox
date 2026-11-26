@@ -6,6 +6,8 @@ import {
   authorizationUrl,
   canonicalResource,
   chooseScope,
+  CIMD_PORTS,
+  cimdClient,
   createPkce,
   discoverAuthServer,
   discoverProtectedResource,
@@ -15,6 +17,8 @@ import {
   probeServer,
   randomState,
   refreshGrant,
+  revokeGrant,
+  loopbackRedirect,
   registerClient,
   validateCallback
 } from './mcpOAuth'
@@ -84,8 +88,26 @@ export async function loginConnector(connector: { id: string; url: string }): Pr
     )
     deliver(url.searchParams)
   })
-  const stored = getClient(authServer.issuer)
-  const port = (await listen(server, portOf(stored?.redirectUri))) ?? (await listen(server, 0))
+  // Identité de l'app : le document CIMD de la landing si le serveur l'accepte et qu'un de
+  // ses ports est libre ; sinon l'enregistrement dynamique, sur un port quelconque.
+  let cimdPort: (typeof CIMD_PORTS)[number] | null = null
+  if (authServer.cimdSupported) {
+    for (const candidate of CIMD_PORTS) {
+      if ((await listen(server, candidate)) !== null) {
+        cimdPort = candidate
+        break
+      }
+    }
+  }
+  const stored = cimdPort === null ? getClient(authServer.issuer) : null
+  if (cimdPort === null && !authServer.registrationEndpoint) {
+    throw new OAuthError(
+      authServer.cimdSupported
+        ? 'Les ports de connexion de l’app sont occupés par un autre programme. Ferme-le ou réessaie plus tard.'
+        : "Ce serveur n'accepte ni l'identité publique de l'app ni son enregistrement automatique : il faudrait un identifiant client fourni par l'éditeur."
+    )
+  }
+  const port = cimdPort ?? (await listen(server, portOf(stored?.redirectUri))) ?? (await listen(server, 0))
   if (port === null) throw new OAuthError("Impossible d'ouvrir le port local qui reçoit la réponse du navigateur.")
 
   const timer = setTimeout(() => fail(new OAuthError('La connexion n’a pas abouti à temps. Réessaie.')), LOGIN_TIMEOUT_MS)
@@ -98,10 +120,15 @@ export async function loginConnector(connector: { id: string; url: string }): Pr
   current = { server, cancel: () => fail(new OAuthError('Connexion annulée.')) }
 
   try {
-    const redirectUri = `http://127.0.0.1:${port}/callback`
-    // L'identifiant d'app est lié à l'émetteur et à son adresse de retour exacte.
-    const client = stored && stored.redirectUri === redirectUri ? stored : await registerClient(fetch, authServer, redirectUri)
-    if (client !== stored) saveClient(client)
+    const redirectUri = loopbackRedirect(port)
+    // Enregistrement dynamique : l'identifiant est lié à l'émetteur et à son adresse de retour exacte.
+    const client =
+      cimdPort !== null
+        ? cimdClient(authServer, cimdPort)
+        : stored && stored.redirectUri === redirectUri
+          ? stored
+          : await registerClient(fetch, authServer, redirectUri)
+    if (cimdPort === null && client !== stored) saveClient(client)
 
     const pkce = createPkce()
     const state = randomState()
@@ -128,8 +155,20 @@ export async function loginConnector(connector: { id: string; url: string }): Pr
   }
 }
 
-export function logoutConnector(connectorId: string): void {
+/**
+ * Déconnexion : les jetons sont annulés chez le serveur d'autorisation quand il le permet,
+ * puis effacés du Mac dans tous les cas, même hors ligne.
+ */
+export async function logoutConnector(connectorId: string): Promise<void> {
+  const grant = getGrant(connectorId)
   removeGrant(connectorId)
+  if (!grant) return
+  try {
+    const server = await discoverAuthServer(fetch, grant.issuer)
+    await revokeGrant(fetch, server.revocationEndpoint, grant)
+  } catch {
+    // Serveur injoignable : les jetons sont déjà effacés ici, et expireront chez lui.
+  }
 }
 
 export type FreshToken = { token: string } | { token: null; reconnect: boolean }

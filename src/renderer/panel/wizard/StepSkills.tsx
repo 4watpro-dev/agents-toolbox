@@ -41,6 +41,11 @@ export function StepSkills({ draft, update }: StepProps): React.JSX.Element {
     setConnectors(await window.toolbox.connectors.list())
   }
 
+  async function logout(id: string): Promise<void> {
+    await window.toolbox.connectors.logout(id)
+    setConnectors(await window.toolbox.connectors.list())
+  }
+
   return (
     <>
       <Field label="Instructions métier" hint="Ce que l'agent doit savoir faire, et comment.">
@@ -178,7 +183,12 @@ export function StepSkills({ draft, update }: StepProps): React.JSX.Element {
                 </label>
                 {connector.auth === 'oauth' &&
                   (connector.connected ? (
-                    <span className="connector-status is-on">Connecté</span>
+                    <>
+                      <span className="connector-status is-on">Connecté</span>
+                      <button type="button" className="button button-small" disabled={signingIn !== null} onClick={() => void logout(connector.id)}>
+                        Se déconnecter
+                      </button>
+                    </>
                   ) : (
                     <>
                       <span className="connector-status">

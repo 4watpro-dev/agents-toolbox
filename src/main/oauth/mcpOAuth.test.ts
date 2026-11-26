@@ -5,6 +5,9 @@ import {
   authServerMetadataUrls,
   canonicalResource,
   chooseScope,
+  CIMD_CLIENT_ID,
+  CIMD_PORTS,
+  cimdClient,
   createPkce,
   discoverAuthServer,
   discoverProtectedResource,
@@ -15,6 +18,7 @@ import {
   probeServer,
   refreshGrant,
   registerClient,
+  revokeGrant,
   validateCallback,
   type AuthServer,
   type Fetch,
@@ -45,6 +49,7 @@ const DEEPL_AS = {
   authorization_endpoint: 'https://mcp.deepl.com/.idp/auth',
   token_endpoint: 'https://mcp.deepl.com/.idp/token',
   registration_endpoint: 'https://mcp.deepl.com/.idp/register',
+  revocation_endpoint: 'https://mcp.deepl.com/.idp/revoke',
   code_challenge_methods_supported: ['S256'],
   scopes_supported: ['offline_access'],
   client_id_metadata_document_supported: true
@@ -55,8 +60,10 @@ const SERVER: AuthServer = {
   authorizationEndpoint: 'https://mcp.deepl.com/.idp/auth',
   tokenEndpoint: 'https://mcp.deepl.com/.idp/token',
   registrationEndpoint: 'https://mcp.deepl.com/.idp/register',
+  revocationEndpoint: 'https://mcp.deepl.com/.idp/revoke',
   scopesSupported: ['offline_access'],
-  issParameterSupported: false
+  issParameterSupported: false,
+  cimdSupported: true
 }
 
 describe('défi WWW-Authenticate', () => {
@@ -152,6 +159,25 @@ describe('enregistrement et autorisation', () => {
       grant_types: ['authorization_code', 'refresh_token'],
       token_endpoint_auth_method: 'none'
     })
+  })
+
+  it("s'identifie par le document de la landing, sans rien enregistrer, avec un port déclaré", async () => {
+    expect(cimdClient(SERVER, CIMD_PORTS[0])).toEqual({
+      issuer: 'https://mcp.deepl.com/',
+      clientId: 'https://agenttoolbox.netlify.app/oauth/client.json',
+      clientSecret: null,
+      redirectUri: `http://127.0.0.1:${CIMD_PORTS[0]}/callback`
+    })
+    const { readFileSync, existsSync } = await import('node:fs')
+    const { resolve } = await import('node:path')
+    // Le document publié (dépôt voisin de la landing) doit annoncer exactement ces ports,
+    // sinon le serveur refuserait le retour. Sans ce dépôt à côté, la vérification est sautée.
+    const published = resolve(__dirname, '../../../../agent-toolbox-landing/public/oauth/client.json')
+    if (existsSync(published)) {
+      const document = JSON.parse(readFileSync(published, 'utf8'))
+      expect(document.client_id).toBe(CIMD_CLIENT_ID)
+      expect(document.redirect_uris).toEqual(CIMD_PORTS.map((port) => `http://127.0.0.1:${port}/callback`))
+    }
   })
 
   it('PKCE en S256 : le défi est le SHA-256 du vérificateur', () => {
@@ -253,6 +279,16 @@ describe('jetons', () => {
     expect(new URLSearchParams(String(rotated.calls[0]!.init.body)).get('resource')).toBe('https://mcp.deepl.com/v1/mcp')
     const kept = fakeFetch({ 'https://mcp.deepl.com/.idp/token': () => json({ access_token: 'C', token_type: 'Bearer' }) })
     expect(await refreshGrant(kept.fetch, grant)).toMatchObject({ accessToken: 'C', refreshToken: 'R' })
+  })
+
+  it('révoque le jeton de rafraîchissement puis le jeton d’accès, avec l’identifiant de l’app', async () => {
+    const server = fakeFetch({ 'https://mcp.deepl.com/.idp/revoke': () => new Response('', { status: 200 }) })
+    expect(await revokeGrant(server.fetch, 'https://mcp.deepl.com/.idp/revoke', grant)).toBe(true)
+    expect(server.calls.map((call) => Object.fromEntries(new URLSearchParams(String(call.init.body))))).toEqual([
+      { token: 'R', token_type_hint: 'refresh_token', client_id: 'abc' },
+      { token: 'A', token_type_hint: 'access_token', client_id: 'abc' }
+    ])
+    expect(await revokeGrant(server.fetch, null, grant)).toBe(false)
   })
 
   it('signale un rafraîchissement refusé, pour demander une reconnexion', async () => {
