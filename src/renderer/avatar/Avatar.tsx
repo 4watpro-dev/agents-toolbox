@@ -209,7 +209,7 @@ export function Avatar({
               />
             </motion.g>
 
-            <AccessoryLayer accessory={config.accessory} ink={ink} clipId={clipId} />
+            <AccessoryLayer accessory={config.accessory} ink={ink} clipId={clipId} uid={uid} />
 
             <AnimatePresence>
               {expression.brows && (
@@ -313,43 +313,145 @@ interface AccessoryLayerProps {
   accessory: Accessory
   ink: string
   clipId: string
+  uid: string
 }
 
-function AccessoryLayer({ accessory, ink, clipId }: AccessoryLayerProps): React.JSX.Element | null {
+/** Reflet commun aux accessoires : un trait blanc doux, comme sur le corps. */
+function Glint({ d, width = 1.6, opacity = 0.7 }: { d: string; width?: number; opacity?: number }): React.JSX.Element {
+  return <path d={d} fill="none" stroke="#ffffff" strokeOpacity={opacity} strokeWidth={width} strokeLinecap="round" />
+}
+
+/**
+ * Accessoires dans le même style que la sphère : volumes en dégradés, reflet
+ * blanc en haut à gauche, aucune couleur à plat.
+ */
+function AccessoryLayer({ accessory, ink, clipId, uid }: AccessoryLayerProps): React.JSX.Element | null {
+  const id = (name: string): string => `${uid}-acc-${name}`
+  const url = (name: string): string => `url(#${id(name)})`
   switch (accessory) {
     case 'none':
       return null
-    case 'glasses':
-      return (
-        <g fill="none" stroke={ink} strokeWidth={2}>
-          <circle cx={CX - EYE_OFFSET} cy={EYE_Y} r={9.5} />
-          <circle cx={CX + EYE_OFFSET} cy={EYE_Y} r={9.5} />
-          <path d={`M${CX - 1.5} ${EYE_Y - 1} Q${CX} ${EYE_Y - 2.5} ${CX + 1.5} ${EYE_Y - 1}`} />
+    case 'glasses': {
+      const lens = (x: number): React.JSX.Element => (
+        <g key={x}>
+          <circle cx={x} cy={EYE_Y} r={9.5} fill={url('lens')} />
+          <circle cx={x} cy={EYE_Y} r={9.5} fill="none" stroke={url('frame')} strokeWidth={2.6} />
+          <Glint d={`M${x - 6} ${EYE_Y - 2} A7 7 0 0 1 ${x - 1.5} ${EYE_Y - 6.5}`} width={1.5} opacity={0.85} />
         </g>
       )
-    case 'headphones':
       return (
         <g>
-          <path d="M13 50 C13 -6 107 -6 107 50" fill="none" stroke="#8a93a6" strokeWidth={4} strokeLinecap="round" />
-          <rect x={7} y={40} width={12} height={26} rx={6} fill="#8a93a6" />
-          <rect x={101} y={40} width={12} height={26} rx={6} fill="#8a93a6" />
+          <defs>
+            <linearGradient id={id('frame')} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stopColor={mixColor(ink, '#ffffff', 0.35)} />
+              <stop offset="1" stopColor={mixColor(ink, '#000000', 0.25)} />
+            </linearGradient>
+            <radialGradient id={id('lens')} cx="0.35" cy="0.3">
+              <stop offset="0" stopColor="#ffffff" stopOpacity="0.32" />
+              <stop offset="1" stopColor="#ffffff" stopOpacity="0.06" />
+            </radialGradient>
+          </defs>
+          {lens(CX - EYE_OFFSET)}
+          {lens(CX + EYE_OFFSET)}
+          <path
+            d={`M${CX - 1.8} ${EYE_Y - 1} Q${CX} ${EYE_Y - 3} ${CX + 1.8} ${EYE_Y - 1}`}
+            fill="none"
+            stroke={url('frame')}
+            strokeWidth={2.4}
+            strokeLinecap="round"
+          />
         </g>
       )
+    }
+    case 'headphones': {
+      const cup = (x: number, flip: boolean): React.JSX.Element => (
+        <g key={x}>
+          <rect x={x} y={42} width={14} height={28} rx={7} fill={url('cup')} />
+          {/* Coussinet, plus sombre, contre la sphère. */}
+          <rect x={flip ? x - 2 : x + 10} y={45} width={6} height={22} rx={3} fill="#3a3f4b" />
+          <Glint d={`M${x + 4} ${48} L${x + 4} ${56}`} width={2} opacity={0.75} />
+        </g>
+      )
+      return (
+        <g>
+          <defs>
+            <linearGradient id={id('band')} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stopColor="#ffffff" />
+              <stop offset="1" stopColor="#aeb6c6" />
+            </linearGradient>
+            <linearGradient id={id('cup')} x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stopColor="#ffffff" />
+              <stop offset="0.55" stopColor="#d3d9e4" />
+              <stop offset="1" stopColor="#8d96a8" />
+            </linearGradient>
+          </defs>
+          <path d="M14 52 C14 -2 106 -2 106 52" fill="none" stroke={url('band')} strokeWidth={5} strokeLinecap="round" />
+          {/* Reflet le long de l'arceau, sur sa moitié gauche. */}
+          <path
+            d="M14 52 C14 -2 106 -2 106 52"
+            fill="none"
+            stroke="#ffffff"
+            strokeOpacity={0.9}
+            strokeWidth={1.3}
+            strokeLinecap="round"
+            strokeDasharray="0 22 46 200"
+            transform="translate(0 -1)"
+          />
+          {cup(4, false)}
+          {cup(102, true)}
+        </g>
+      )
+    }
     case 'bowtie': {
       const y = 84
       return (
-        <g fill="#d64550">
-          <path d={`M${CX} ${y} L${CX - 13} ${y - 7} Q${CX - 15} ${y} ${CX - 13} ${y + 7} Z`} />
-          <path d={`M${CX} ${y} L${CX + 13} ${y - 7} Q${CX + 15} ${y} ${CX + 13} ${y + 7} Z`} />
-          <rect x={CX - 3} y={y - 3.5} width={6} height={7} rx={2} fill="#a8323d" />
+        <g>
+          <defs>
+            <linearGradient id={id('tie')} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stopColor="#ff8a96" />
+              <stop offset="0.5" stopColor="#ef4a5a" />
+              <stop offset="1" stopColor="#b42a3a" />
+            </linearGradient>
+            <radialGradient id={id('knot')} cx="0.4" cy="0.3">
+              <stop offset="0" stopColor="#ff9aa5" />
+              <stop offset="1" stopColor="#b42a3a" />
+            </radialGradient>
+          </defs>
+          <path d={`M${CX} ${y} C${CX - 6} ${y - 8} ${CX - 14} ${y - 10} ${CX - 15} ${y - 4} Q${CX - 16} ${y} ${CX - 15} ${y + 4} C${CX - 14} ${y + 10} ${CX - 6} ${y + 8} ${CX} ${y} Z`} fill={url('tie')} />
+          <path d={`M${CX} ${y} C${CX + 6} ${y - 8} ${CX + 14} ${y - 10} ${CX + 15} ${y - 4} Q${CX + 16} ${y} ${CX + 15} ${y + 4} C${CX + 14} ${y + 10} ${CX + 6} ${y + 8} ${CX} ${y} Z`} fill={url('tie')} />
+          <rect x={CX - 3.5} y={y - 4.5} width={7} height={9} rx={3.5} fill={url('knot')} />
+          <Glint d={`M${CX - 12} ${y - 3} Q${CX - 9} ${y - 6.5} ${CX - 5} ${y - 4}`} width={1.4} />
+          <Glint d={`M${CX + 5} ${y - 4} Q${CX + 9} ${y - 6.5} ${CX + 12} ${y - 3}`} width={1.2} opacity={0.5} />
         </g>
       )
     }
     case 'beanie':
       return (
-        <g clipPath={`url(#${clipId})`}>
-          <rect x={0} y={BODY_TOP} width={120} height={17} fill="#e4572e" />
-          <rect x={0} y={BODY_TOP + 13} width={120} height={5} fill="#b83f1d" />
+        <g>
+          <defs>
+            <linearGradient id={id('wool')} x1="0.2" y1="0" x2="0.7" y2="1">
+              <stop offset="0" stopColor="#ff9a6b" />
+              <stop offset="1" stopColor="#e0532a" />
+            </linearGradient>
+            <linearGradient id={id('cuff')} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stopColor="#f07a4c" />
+              <stop offset="1" stopColor="#b8411d" />
+            </linearGradient>
+            <radialGradient id={id('pompom')} cx="0.38" cy="0.32">
+              <stop offset="0" stopColor="#ffd9c4" />
+              <stop offset="0.6" stopColor="#ff9a6b" />
+              <stop offset="1" stopColor="#d9532c" />
+            </radialGradient>
+          </defs>
+          <g clipPath={`url(#${clipId})`}>
+            <path d="M0 46 Q60 14 120 46 L120 0 L0 0 Z" fill={url('wool')} />
+            {/* Revers, courbé comme la sphère. */}
+            <path d="M0 44 Q60 12 120 44 L120 56 Q60 24 0 56 Z" fill={url('cuff')} />
+            <path d="M0 44 Q60 12 120 44" fill="none" stroke="#ffffff" strokeOpacity={0.35} strokeWidth={1.2} />
+          </g>
+          <Glint d="M38 24 Q46 20 54 19" width={1.6} opacity={0.6} />
+          <circle cx={CX} cy={BODY_TOP - 3} r={8} fill={url('pompom')} />
+          <circle cx={CX - 3} cy={BODY_TOP - 6} r={2.2} fill="#ffffff" opacity={0.7} />
         </g>
       )
   }
