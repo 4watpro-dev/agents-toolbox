@@ -11,7 +11,7 @@
     "start": "electron-vite build && electron .",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "icon": "node scripts/make-app-icon.mjs",
+    "icon": "electron scripts/make-app-icon.mjs && node scripts/make-tray-icon.mjs",
     "app": "electron-vite build && electron-builder --mac --dir && rm -rf \"/Applications/Agent Toolbox.app\" && ditto \"dist/mac-arm64/Agent Toolbox.app\" \"/Applications/Agent Toolbox.app\"",
     "app:check": "AT_ALLOW_DEBUG=1 electron-vite build && electron-builder --mac --dir"
   },

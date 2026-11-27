@@ -5,13 +5,29 @@ import { deflateSync } from 'node:zlib'
 
 const OVERSAMPLING = 4
 
-/** Vrai si le point (en unités d'une grille 16×16) est dans le fantôme. */
-function inGhost(x, y) {
-  const round = Math.hypot(x - 8, y - 7) <= 6
-  // Pointe de la goutte : un cône tangent au cercle, qui finit en y = 15.
-  const tip = y >= 11.5 && y <= 15 && Math.abs(x - 8) <= (15 - y) * 1.134
-  const eye = (cx) => ((x - cx) / 1) ** 2 + ((y - 6) / 1.5) ** 2 <= 1
-  return (round || tip) && !eye(6.2) && !eye(9.8)
+/** Point dans une ellipse tournée de `angle` degrés. */
+function inEllipse(x, y, cx, cy, rx, ry, angle) {
+  const a = (-angle * Math.PI) / 180
+  const dx = x - cx
+  const dy = y - cy
+  const u = dx * Math.cos(a) - dy * Math.sin(a)
+  const v = dx * Math.sin(a) + dy * Math.cos(a)
+  return (u / rx) ** 2 + (v / ry) ** 2 <= 1
+}
+
+// Grille 120 du composant Avatar ramenée à 16 : la sphère et ses deux bras tiennent dans le carré.
+const K = 0.15
+const map = (value, center, origin) => (value - center) * K + origin
+
+/** Vrai si le point (en unités d'une grille 16×16) est dans la sphère, yeux évidés. */
+function inSphere(x, y) {
+  const ax = (x - 8.4) / K + 60
+  const ay = (y - 8.6) / K + 58
+  const body = Math.hypot(ax - 60, ay - 58) <= 40
+  const arms = inEllipse(ax, ay, 24, 40, 11, 16.5, -42) || inEllipse(ax, ay, 96, 76, 9, 13.5, -36)
+  // Yeux agrandis : à 16 px, ceux de l'app feraient moins d'un pixel.
+  const eye = (cx) => ((x - map(cx, 60, 8.4)) / 0.8) ** 2 + ((y - map(48, 58, 8.6)) / 1.35) ** 2 <= 1
+  return (body || arms) && !eye(48) && !eye(72)
 }
 
 function crc32(buffer) {
@@ -42,7 +58,7 @@ function png(size) {
         for (let sx = 0; sx < OVERSAMPLING; sx++) {
           const x = ((px + (sx + 0.5) / OVERSAMPLING) / size) * 16
           const y = ((py + (sy + 0.5) / OVERSAMPLING) / size) * 16
-          if (inGhost(x, y)) hits++
+          if (inSphere(x, y)) hits++
         }
       }
       row[1 + px * 4 + 3] = Math.round((hits / OVERSAMPLING ** 2) * 255)

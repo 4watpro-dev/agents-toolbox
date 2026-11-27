@@ -1,115 +1,67 @@
-// Génère l'icône de l'app (Dock, Cmd+Tab, Applications) : un fantôme vert sur fond sombre.
-// Usage : node scripts/make-app-icon.mjs  → build/icon.png (1024 × 1024)
+// Génère l'icône de l'app (Dock, Cmd+Tab, Applications, Windows) et l'icône couleur de la
+// zone de notification Windows : la sphère verte des agents, en style plat.
+// Usage : npx electron scripts/make-app-icon.mjs  → build/icon.png (1024 px), resources/trayWindows.png (32 px)
+import { app, BrowserWindow } from 'electron'
 import { mkdirSync, writeFileSync } from 'node:fs'
-import { deflateSync } from 'node:zlib'
 
-const SIZE = 1024
-const OVERSAMPLING = 3
+app.commandLine.appendSwitch('force-device-scale-factor', '1')
+app.dock?.hide()
+// Une image après l'autre : fermer la première fenêtre ne doit pas quitter le script.
+app.on('window-all-closed', () => undefined)
+
+// Style plat, comme l'ancienne icône : un dégradé vertical, un reflet doux, des yeux sombres.
+const C = {
+  bodyTop: '#8af59a',
+  bodyBottom: '#3cc457',
+  armTop: '#6ee883',
+  armBottom: '#2fae48',
+  eye: '#10131a'
+}
+
+/** La sphère des agents, dans la grille 120 × 120 du composant Avatar, sans le relief du verre. */
+const sphere = () => `
+  <defs>
+    <linearGradient id="fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${C.bodyTop}"/><stop offset="1" stop-color="${C.bodyBottom}"/></linearGradient>
+    <linearGradient id="arm" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${C.armTop}"/><stop offset="1" stop-color="${C.armBottom}"/></linearGradient>
+    <radialGradient id="shine"><stop offset="0" stop-color="#fff" stop-opacity="0.35"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
+    <clipPath id="body"><circle cx="60" cy="58" r="40"/></clipPath>
+  </defs>
+  <ellipse cx="24" cy="40" rx="11" ry="16.5" transform="rotate(-42 24 40)" fill="url(#arm)"/>
+  <ellipse cx="96" cy="76" rx="9" ry="13.5" transform="rotate(-36 96 76)" fill="url(#arm)"/>
+  <circle cx="60" cy="58" r="40" fill="url(#fill)"/>
+  <circle cx="44" cy="36" r="20" fill="url(#shine)" clip-path="url(#body)"/>
+  <ellipse cx="49" cy="50" rx="4.6" ry="7" fill="${C.eye}"/>
+  <ellipse cx="71" cy="50" rx="4.6" ry="7" fill="${C.eye}"/>`
+
 // Grille macOS : carré arrondi de 824 px centré, rayon d'environ 185 px.
-const TILE = { x: 100, y: 100, size: 824, radius: 185 }
-// Le fantôme est décrit sur une grille 16 × 16 (comme l'icône de la barre de menus).
-const GHOST_SCALE = 38
-const GHOST_OFFSET = { x: SIZE / 2 - 8 * GHOST_SCALE, y: SIZE / 2 - 8.3 * GHOST_SCALE }
+const APP_ICON = `<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="tile" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#262b36"/><stop offset="1" stop-color="#0d0f13"/></linearGradient>
+    <radialGradient id="halo"><stop offset="0" stop-color="#c8f031" stop-opacity="0.2"/><stop offset="1" stop-color="#c8f031" stop-opacity="0"/></radialGradient>
+  </defs>
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#tile)"/>
+  <circle cx="512" cy="500" r="360" fill="url(#halo)"/>
+  <g transform="translate(140 152) scale(6.2)">${sphere()}</g>
+</svg>`
 
-const mix = (a, b, t) => a.map((value, i) => value + (b[i] - value) * t)
-const hex = (value) => [1, 3, 5].map((i) => parseInt(value.slice(i, i + 2), 16))
+// Zone de notification Windows : la sphère seule, bras compris, sur fond transparent.
+const TRAY_ICON = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="8 14 104 92">${sphere()}</svg>`
 
-const TILE_TOP = hex('#262b36')
-const TILE_BOTTOM = hex('#0d0f13')
-const BODY_TOP = hex('#8af59a')
-const BODY_BOTTOM = hex('#3cc457')
-const EYE = hex('#10131a')
-const ACCENT = hex('#c8f031')
-
-function inTile(x, y) {
-  const { x: left, y: top, size, radius } = TILE
-  const cx = Math.min(Math.max(x, left + radius), left + size - radius)
-  const cy = Math.min(Math.max(y, top + radius), top + size - radius)
-  return Math.hypot(x - cx, y - cy) <= radius
+async function render(svg, size, path) {
+  const window = new BrowserWindow({ width: size, height: size, show: false, frame: false, transparent: true, webPreferences: { offscreen: true } })
+  const html = `<html><body style="margin:0;background:transparent;overflow:hidden">${svg}</body></html>`
+  await window.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`)
+  await new Promise((resolve) => setTimeout(resolve, 300))
+  const image = await window.webContents.capturePage({ x: 0, y: 0, width: size, height: size })
+  writeFileSync(path, image.toPNG())
+  window.destroy()
+  console.log(`${path} écrit`)
 }
 
-function inGhostBody(gx, gy) {
-  const round = Math.hypot(gx - 8, gy - 7) <= 6
-  const tip = gy >= 11.5 && gy <= 15 && Math.abs(gx - 8) <= (15 - gy) * 1.134
-  return round || tip
-}
-
-const inEye = (gx, gy, cx) => ((gx - cx) / 0.9) ** 2 + ((gy - 6.6) / 1.35) ** 2 <= 1
-
-/** Couleur RGBA (0–255) d'un point de l'icône. */
-function sample(x, y) {
-  if (!inTile(x, y)) return [0, 0, 0, 0]
-  const t = (y - TILE.y) / TILE.size
-  let color = mix(TILE_TOP, TILE_BOTTOM, t)
-  const gx = (x - GHOST_OFFSET.x) / GHOST_SCALE
-  const gy = (y - GHOST_OFFSET.y) / GHOST_SCALE
-  // Halo vert citron discret autour du fantôme.
-  const glow = Math.max(0, 1 - Math.hypot(gx - 8, gy - 8) / 9.5)
-  color = mix(color, ACCENT, glow * glow * 0.22)
-  if (inGhostBody(gx, gy)) {
-    color = mix(BODY_TOP, BODY_BOTTOM, Math.min(Math.max((gy - 1) / 14, 0), 1))
-    // Reflet en haut à gauche.
-    const shine = Math.max(0, 1 - Math.hypot(gx - 5.6, gy - 3.6) / 2.6)
-    color = mix(color, [255, 255, 255], shine * 0.35)
-    if (inEye(gx, gy, 6.1) || inEye(gx, gy, 9.9)) color = EYE
-  }
-  return [...color, 255]
-}
-
-function crc32(buffer) {
-  let crc = ~0
-  for (const byte of buffer) {
-    crc ^= byte
-    for (let bit = 0; bit < 8; bit++) crc = (crc >>> 1) ^ (crc & 1 ? 0xedb88320 : 0)
-  }
-  return ~crc >>> 0
-}
-
-function chunk(type, data) {
-  const body = Buffer.concat([Buffer.from(type, 'ascii'), data])
-  const length = Buffer.alloc(4)
-  length.writeUInt32BE(data.length)
-  const crc = Buffer.alloc(4)
-  crc.writeUInt32BE(crc32(body))
-  return Buffer.concat([length, body, crc])
-}
-
-const rows = []
-const samples = OVERSAMPLING ** 2
-for (let py = 0; py < SIZE; py++) {
-  const row = Buffer.alloc(1 + SIZE * 4)
-  for (let px = 0; px < SIZE; px++) {
-    // Moyenne prémultipliée : les bords restent nets, sans liseré sombre.
-    const sum = [0, 0, 0, 0]
-    for (let sy = 0; sy < OVERSAMPLING; sy++) {
-      for (let sx = 0; sx < OVERSAMPLING; sx++) {
-        const [r, g, b, a] = sample(px + (sx + 0.5) / OVERSAMPLING, py + (sy + 0.5) / OVERSAMPLING)
-        sum[0] += r * a
-        sum[1] += g * a
-        sum[2] += b * a
-        sum[3] += a
-      }
-    }
-    const offset = 1 + px * 4
-    if (sum[3] > 0) for (let i = 0; i < 3; i++) row[offset + i] = Math.round(sum[i] / sum[3])
-    row[offset + 3] = Math.round(sum[3] / samples)
-  }
-  rows.push(row)
-}
-
-const header = Buffer.alloc(13)
-header.writeUInt32BE(SIZE, 0)
-header.writeUInt32BE(SIZE, 4)
-header[8] = 8
-header[9] = 6
-mkdirSync('build', { recursive: true })
-writeFileSync(
-  'build/icon.png',
-  Buffer.concat([
-    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
-    chunk('IHDR', header),
-    chunk('IDAT', deflateSync(Buffer.concat(rows))),
-    chunk('IEND', Buffer.alloc(0))
-  ])
-)
-console.log('build/icon.png écrit')
+app.whenReady().then(async () => {
+  mkdirSync('build', { recursive: true })
+  mkdirSync('resources', { recursive: true })
+  await render(APP_ICON, 1024, 'build/icon.png')
+  await render(TRAY_ICON, 32, 'resources/trayWindows.png')
+  app.quit()
+})
