@@ -73,3 +73,38 @@ describe('connectorKey', () => {
     expect(connectorKey('a__b', [])).toBe('a-b')
   })
 })
+
+describe('en-tête du jeton', () => {
+  it('accepte un nom d’en-tête simple, et vide veut dire Authorization: Bearer', async () => {
+    const { ConnectorInputSchema } = await import('./connectors')
+    const base = { name: 'Context7', url: 'https://mcp.context7.com/mcp', token: 'k' }
+    expect(ConnectorInputSchema.parse({ ...base, tokenHeader: 'CONTEXT7_API_KEY' }).tokenHeader).toBe('CONTEXT7_API_KEY')
+    expect(ConnectorInputSchema.parse({ ...base, tokenHeader: '  ' }).tokenHeader).toBeNull()
+    expect(ConnectorInputSchema.parse(base).tokenHeader).toBeNull()
+  })
+
+  it('refuse les en-têtes du transport et les noms douteux', async () => {
+    const { ConnectorInputSchema } = await import('./connectors')
+    const base = { name: 'X', url: 'https://x.example/mcp', token: 'k' }
+    for (const tokenHeader of ['Host', 'cookie', 'Mcp-Session-Id', 'X Key', 'X:Key', 'a'.repeat(70)]) {
+      expect(ConnectorInputSchema.safeParse({ ...base, tokenHeader }).success).toBe(false)
+    }
+  })
+})
+
+describe('lecture seule', () => {
+  it('vaut faux pour un connecteur enregistré avant ce réglage, et pour un nouveau sans la case', async () => {
+    const { ConnectorSchema: Schema, ConnectorInputSchema } = await import('./connectors')
+    const ancien = Schema.parse({ id: randomUUID(), name: 'Brevo', url: 'https://mcp.brevo.com/mcp' })
+    expect(ancien.readOnly).toBe(false)
+    expect(ancien.auth).toBe('token')
+    expect(ConnectorInputSchema.parse({ name: 'X', url: 'https://x.example/mcp', token: null }).readOnly).toBe(false)
+  })
+
+  it('garde la case cochée, et refuse autre chose qu’un booléen', async () => {
+    const { ConnectorInputSchema } = await import('./connectors')
+    const base = { name: 'Context7', url: 'https://mcp.context7.com/mcp', token: null }
+    expect(ConnectorInputSchema.parse({ ...base, readOnly: true }).readOnly).toBe(true)
+    expect(ConnectorInputSchema.safeParse({ ...base, readOnly: 'oui' }).success).toBe(false)
+  })
+})

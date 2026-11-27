@@ -9,6 +9,8 @@ export interface Decision {
 export interface RunHandlers {
   /** Clé de chaque connecteur de ce tour, et son nom pour l'affichage. */
   labels: Record<string, string>
+  /** Clés des connecteurs déclarés en lecture seule par la personne : jamais de carte. */
+  readOnly?: string[]
   /** Une page hors des domaines autorisés peut être proposée à la personne. Sinon, refusée. */
   confirmWeb?: boolean
   onConfirm(confirmation: Confirmation): void
@@ -85,6 +87,10 @@ export function createConfirmationBroker(timeoutMs: number) {
       const parsed = parseConnectorTool(name)
       const connector = parsed ? run.labels[parsed.key] : undefined
       if (!parsed || !connector) return denied("Ce connecteur n'est pas activé pour cet agent.")
+      // Choix explicite de la personne : on ne devine plus rien d'après le nom de l'outil.
+      if (run.readOnly?.includes(parsed.key)) {
+        return { decision: Promise.resolve({ decision: 'allow', reason: 'Connecteur en lecture seule.' }), cancel: () => undefined }
+      }
       if (classifyToolCall(parsed.tool, input) === 'read') {
         return { decision: Promise.resolve({ decision: 'allow', reason: 'Lecture.' }), cancel: () => undefined }
       }

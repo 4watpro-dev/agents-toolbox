@@ -130,6 +130,10 @@ export interface ResolvedConnector {
   name: string
   url: string
   token: string | null
+  /** `null` : Authorization: Bearer ; sinon le jeton va tel quel dans cet en-tête. */
+  tokenHeader?: string | null
+  /** Déclaré en lecture seule : ses outils passent sans carte de confirmation. */
+  readOnly?: boolean
 }
 
 export interface ConnectorConfig {
@@ -137,25 +141,31 @@ export interface ConnectorConfig {
   /** Les jetons passent par l'environnement : ils n'apparaissent pas sur la ligne de commande. */
   env: Record<string, string>
   labels: Record<string, string>
+  /** Clés des connecteurs déclarés en lecture seule. */
+  readOnly: string[]
 }
 
 export function connectorConfig(connectors: ResolvedConnector[]): ConnectorConfig {
-  if (connectors.length === 0) return { mcpConfig: null, env: {}, labels: {} }
+  if (connectors.length === 0) return { mcpConfig: null, env: {}, labels: {}, readOnly: [] }
   const mcpServers: Record<string, unknown> = {}
   const env: Record<string, string> = {}
   const labels: Record<string, string> = {}
+  const readOnly: string[] = []
   connectors.forEach((connector, index) => {
     const key = connectorKey(connector.name, Object.keys(labels))
     labels[key] = connector.name
+    if (connector.readOnly) readOnly.push(key)
     const variable = `AT_MCP_TOKEN_${index}`
     if (connector.token) env[variable] = connector.token
     mcpServers[key] = {
       type: 'http',
       url: connector.url,
-      ...(connector.token ? { headers: { Authorization: `Bearer \${${variable}}` } } : {})
+      ...(connector.token
+        ? { headers: connector.tokenHeader ? { [connector.tokenHeader]: `\${${variable}}` } : { Authorization: `Bearer \${${variable}}` } }
+        : {})
     }
   })
-  return { mcpConfig: JSON.stringify({ mcpServers }), env, labels }
+  return { mcpConfig: JSON.stringify({ mcpServers }), env, labels, readOnly }
 }
 
 /**

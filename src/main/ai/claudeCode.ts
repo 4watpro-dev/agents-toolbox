@@ -112,12 +112,13 @@ export function sendViaClaudeCode(sessionId: string, agent: AgentDraft, message:
   sessions.set(sessionId, session)
   const usedResume = session.resumeId !== null
   const prompt = session.resumeId ? text : promptWithHistory(session.turns, text)
-  const { mcpConfig, env, labels } = connectorConfig(context.connectors)
+  const { mcpConfig, env, labels, readOnly } = connectorConfig(context.connectors)
   const confirmWeb = agent.tools.webFetch && context.confirmWeb === true
   const toolRun =
     mcpConfig || confirmWeb
       ? openToolRun({
           labels,
+          readOnly,
           confirmWeb,
           onConfirm: (confirmation) => emit({ sessionId, type: 'confirm', confirmation }),
           onResolved: (id, outcome) => emit({ sessionId, type: 'confirmed', id, outcome })

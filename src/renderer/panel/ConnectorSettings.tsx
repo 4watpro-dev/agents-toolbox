@@ -1,16 +1,12 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useState } from 'react'
 import type { Connector } from '../../shared/connectors'
-
-const EMPTY_FORM = { name: '', url: '', token: '' }
+import { ConnectorForm } from './ConnectorForm'
 
 export function ConnectorSettings(): React.JSX.Element {
   const [connectors, setConnectors] = useState<Connector[]>([])
-  const [form, setForm] = useState(EMPTY_FORM)
   /** `undefined` : formulaire fermé. `null` : ajout. */
   const [editing, setEditing] = useState<Connector | null | undefined>(undefined)
-  const [error, setError] = useState<string | null>(null)
   const [removing, setRemoving] = useState<string | null>(null)
-  const [saving, setSaving] = useState(false)
   /** Connecteur dont la connexion OAuth est en cours dans le navigateur. */
   const [signingIn, setSigningIn] = useState<string | null>(null)
   const [loginError, setLoginError] = useState<{ id: string; message: string } | null>(null)
@@ -25,25 +21,6 @@ export function ConnectorSettings(): React.JSX.Element {
 
   function open(connector: Connector | null): void {
     setEditing(connector)
-    setError(null)
-    setForm(connector ? { name: connector.name, url: connector.url, token: '' } : EMPTY_FORM)
-  }
-
-  async function save(event: FormEvent): Promise<void> {
-    event.preventDefault()
-    // En modification, un champ vide garde le jeton enregistré.
-    const token = form.token.trim() || (editing ? null : '')
-    setSaving(true)
-    // Sans jeton, l'app interroge le serveur : s'il demande OAuth, « Se connecter » apparaît.
-    const result = await window.toolbox.connectors.save(editing?.id ?? null, { name: form.name, url: form.url, token })
-    setSaving(false)
-    if (!result.ok) {
-      setError(result.message)
-      return
-    }
-    setEditing(undefined)
-    setForm(EMPTY_FORM)
-    await refresh()
   }
 
   async function login(id: string): Promise<void> {
@@ -91,8 +68,13 @@ export function ConnectorSettings(): React.JSX.Element {
                         : 'Connexion requise'}
                   </span>
                 ) : (
-                  <span className="field-hint">{connector.hasToken ? 'Jeton enregistré, chiffré' : 'Sans jeton'}</span>
+                  <span className="field-hint">
+                    {connector.hasToken
+                      ? `Jeton enregistré, chiffré${connector.tokenHeader ? `, envoyé dans ${connector.tokenHeader}` : ''}`
+                      : 'Sans jeton'}
+                  </span>
                 )}
+                {connector.readOnly && <span className="connector-status is-warning">Lecture seule : aucune confirmation</span>}
                 {loginError?.id === connector.id && (
                   <span className="form-error" role="alert">
                     {loginError.message}
@@ -110,6 +92,11 @@ export function ConnectorSettings(): React.JSX.Element {
                 </div>
               ) : (
                 <div className="connector-actions">
+                  {connector.auth === 'token' && connector.hasToken && (
+                    <button type="button" className="button" disabled={signingIn !== null} onClick={() => void logout(connector.id)}>
+                      Se déconnecter
+                    </button>
+                  )}
                   {connector.auth === 'oauth' &&
                     (connector.connected ? (
                       <button type="button" className="button" disabled={signingIn !== null} onClick={() => void logout(connector.id)}>
@@ -142,51 +129,15 @@ export function ConnectorSettings(): React.JSX.Element {
           + Ajouter un connecteur
         </button>
       ) : (
-        <form className="connector-form" onSubmit={(event) => void save(event)}>
-          <label className="field">
-            <span className="field-label">Nom</span>
-            <input className="input" maxLength={40} placeholder="Brevo" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} />
-          </label>
-          <label className="field">
-            <span className="field-label">Adresse du serveur</span>
-            <input
-              className="input"
-              spellCheck={false}
-              placeholder="https://mcp.brevo.com/v1/brevo/mcp"
-              value={form.url}
-              onChange={(event) => setForm({ ...form, url: event.target.value })}
-            />
-          </label>
-          <label className="field">
-            <span className="field-label">Jeton (optionnel)</span>
-            <input
-              className="input"
-              type="password"
-              autoComplete="off"
-              spellCheck={false}
-              placeholder={editing?.hasToken ? 'Laisser vide pour garder le jeton' : 'Envoyé en Authorization: Bearer'}
-              value={form.token}
-              onChange={(event) => setForm({ ...form, token: event.target.value })}
-            />
-            <span className="field-hint">
-              Laisse vide si le serveur propose une connexion OAuth : un bouton « Se connecter » apparaîtra, et l'app renouvellera
-              l'accès toute seule.
-            </span>
-          </label>
-          {error && (
-            <p className="form-error" role="alert">
-              {error}
-            </p>
-          )}
-          <div className="connector-actions">
-            <button type="button" className="button" onClick={() => setEditing(undefined)}>
-              Annuler
-            </button>
-            <button type="submit" className="button button-primary" disabled={saving || !form.name.trim() || !form.url.trim()}>
-              {saving ? 'Vérification…' : 'Enregistrer'}
-            </button>
-          </div>
-        </form>
+        <ConnectorForm
+          key={editing?.id ?? 'nouveau'}
+          editing={editing}
+          onCancel={() => setEditing(undefined)}
+          onSaved={() => {
+            setEditing(undefined)
+            void refresh()
+          }}
+        />
       )}
     </section>
   )

@@ -287,6 +287,7 @@ export interface ConnectorsApi {
   remove(id: string): Promise<void>
   /** Connexion OAuth dans le navigateur du Mac ; se termine quand le navigateur a répondu. */
   login(id: string): Promise<Result<Connector>>
+  /** OAuth : révoque et efface les jetons. Jeton collé : l'efface. Le connecteur reste. */
   logout(id: string): Promise<void>
 }
 

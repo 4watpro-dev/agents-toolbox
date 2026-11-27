@@ -2659,3 +2659,37 @@ textarea.input {
   padding: 3px 10px;
   font-size: 12px;
 }
+
+.connector-add {
+  align-self: flex-start;
+  margin-top: 4px;
+}
+
+.connector-advanced summary {
+  color: var(--muted);
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+.connector-advanced[open] summary {
+  margin-bottom: 8px;
+}
+
+/* Lecture seule : l'avertissement est toujours lisible, et passe en orange une fois la case cochée. */
+.connector-readonly {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.connector-warning {
+  margin: 0 0 0 26px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.connector-warning.is-on,
+.connector-status.is-warning {
+  color: #f0b45c;
+}

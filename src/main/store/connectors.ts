@@ -68,7 +68,8 @@ export function saveConnector(id: string | null, input: ConnectorInput, auth: St
     return { ok: false, message: "Le trousseau macOS est indisponible : le jeton ne peut pas être chiffré, rien n'a été enregistré." }
   }
 
-  const connector: StoredConnector = { id: id ?? randomUUID(), name: input.name, url: input.url, auth }
+  // Le choix d'en-tête ne vaut que pour un jeton collé à la main ; OAuth envoie toujours Bearer.
+  const connector: StoredConnector = { id: id ?? randomUUID(), name: input.name, url: input.url, auth, tokenHeader: auth === 'token' ? input.tokenHeader : null, readOnly: input.readOnly }
   if (input.token !== null || auth === 'oauth') {
     if (input.token && auth === 'token') tokens[connector.id] = input.token
     else delete tokens[connector.id]
@@ -78,6 +79,14 @@ export function saveConnector(id: string | null, input: ConnectorInput, auth: St
   if (previous && (previous.url !== connector.url || auth === 'token')) removeGrant(connector.id)
   writeJson(connectorsPath(), id ? stored.map((other) => (other.id === id ? connector : other)) : [...stored, connector])
   return { ok: true, value: { ...connector, hasToken: connector.id in tokens, connected: connectedIds().has(connector.id) } }
+}
+
+/** Déconnexion d'un connecteur à jeton : le jeton est effacé, le connecteur reste. */
+export function clearToken(id: string): void {
+  const tokens = readTokens()
+  if (!(id in tokens)) return
+  delete tokens[id]
+  writeTokens(tokens)
 }
 
 export function removeConnector(id: string): void {
@@ -99,13 +108,13 @@ export async function resolveConnectors(ids: string[]): Promise<{ connectors: Re
   const tokens = readTokens()
   const connectors: ResolvedConnector[] = []
   const needsLogin: string[] = []
-  for (const { id, name, url, auth } of readStored().filter((connector) => ids.includes(connector.id))) {
+  for (const { id, name, url, auth, tokenHeader, readOnly } of readStored().filter((connector) => ids.includes(connector.id))) {
     if (auth === 'token') {
-      connectors.push({ name, url, token: tokens[id] ?? null })
+      connectors.push({ name, url, token: tokens[id] ?? null, tokenHeader, readOnly })
       continue
     }
     const fresh = await freshAccessToken(id)
-    if (fresh.token) connectors.push({ name, url, token: fresh.token })
+    if (fresh.token) connectors.push({ name, url, token: fresh.token, readOnly })
     else needsLogin.push(name)
   }
   return { connectors, needsLogin }

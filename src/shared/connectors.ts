@@ -13,6 +13,19 @@ function isAcceptableUrl(value: string): boolean {
   return url.protocol === 'http:' && (url.hostname === 'localhost' || url.hostname === '127.0.0.1')
 }
 
+/**
+ * En-tête qui porte un jeton collé à la main. `null` : `Authorization: Bearer <jeton>`.
+ * Sinon le jeton est envoyé tel quel dans cet en-tête (ex. `CONTEXT7_API_KEY`). Les en-têtes
+ * gérés par le transport HTTP lui-même sont refusés.
+ */
+const RESERVED_HEADERS = new Set(['host', 'content-length', 'content-type', 'accept', 'connection', 'cookie', 'transfer-encoding', 'mcp-session-id', 'mcp-protocol-version'])
+export const TokenHeaderSchema = z
+  .string()
+  .trim()
+  .regex(/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/)
+  .refine((name) => !RESERVED_HEADERS.has(name.toLowerCase()))
+  .nullable()
+
 export const ConnectorSchema = z.object({
   id: z.uuid(),
   name: z.string().trim().min(1).max(40),
@@ -21,7 +34,14 @@ export const ConnectorSchema = z.object({
    * `token` : jeton collé à la main (ou aucun, pour un serveur ouvert).
    * `oauth` : le serveur a demandé une connexion OAuth ; l'app obtient et rafraîchit les jetons.
    */
-  auth: z.enum(['token', 'oauth']).default('token')
+  auth: z.enum(['token', 'oauth']).default('token'),
+  tokenHeader: TokenHeaderSchema.default(null),
+  /**
+   * Lecture seule déclarée par la personne : aucun outil de ce connecteur ne demande de
+   * confirmation, quel que soit son nom. Faux par défaut, y compris pour les connecteurs
+   * enregistrés avant l'apparition de ce réglage.
+   */
+  readOnly: z.boolean().default(false)
 })
 
 export type StoredConnector = z.infer<typeof ConnectorSchema>
@@ -38,12 +58,18 @@ export interface ConnectorInput {
   url: string
   /** `null` : garde le jeton déjà enregistré. Vide : le retire. */
   token: string | null
+  /** `null` : Authorization: Bearer. */
+  tokenHeader: string | null
+  /** Vrai : jamais de carte de confirmation pour ce connecteur. */
+  readOnly: boolean
 }
 
 export const ConnectorInputSchema = z.object({
   name: ConnectorSchema.shape.name,
   url: ConnectorSchema.shape.url,
-  token: z.string().trim().max(2000).nullable()
+  token: z.string().trim().max(2000).nullable(),
+  tokenHeader: z.preprocess((value) => (typeof value === 'string' && value.trim() === '' ? null : value), TokenHeaderSchema).default(null),
+  readOnly: z.boolean().default(false)
 })
 
 // Toute action de cette liste passe par une confirmation, même si le nom contient aussi une lecture.

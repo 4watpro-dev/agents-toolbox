@@ -3,6 +3,7 @@ import { EFFORTS, MODELS, type AgentDraft } from '../../../shared/agent'
 import type { Connector } from '../../../shared/connectors'
 import { composePrompt } from '../../../shared/systemPrompt'
 import { parseDomains, usesWebTools } from '../../../shared/tools'
+import { ConnectorForm } from '../ConnectorForm'
 import { FolderIcon } from '../icons'
 import { Field, Options, type StepProps } from './fields'
 
@@ -31,6 +32,7 @@ export function StepSkills({ draft, update }: StepProps): React.JSX.Element {
   /** Connexion OAuth lancée d'ici même : le navigateur s'ouvre, puis la liste se met à jour. */
   const [signingIn, setSigningIn] = useState<string | null>(null)
   const [loginError, setLoginError] = useState<{ id: string; message: string } | null>(null)
+  const [addingConnector, setAddingConnector] = useState(false)
 
   async function login(id: string): Promise<void> {
     setSigningIn(id)
@@ -159,7 +161,7 @@ export function StepSkills({ draft, update }: StepProps): React.JSX.Element {
         </p>
         <span className="field-label tools-group">Connecteurs MCP</span>
         {connectors.length === 0 ? (
-          <p className="field-hint">Aucun connecteur : ajoutes-en un dans les réglages (⚙), puis reviens ici.</p>
+          <p className="field-hint">Aucun connecteur pour l'instant.</p>
         ) : (
           <>
             {connectors.map((connector) => (
@@ -181,6 +183,14 @@ export function StepSkills({ draft, update }: StepProps): React.JSX.Element {
                   />
                   {connector.name}
                 </label>
+                {connector.auth === 'token' && connector.hasToken && (
+                  <>
+                    <span className="connector-status is-on">Jeton enregistré</span>
+                    <button type="button" className="button button-small" disabled={signingIn !== null} onClick={() => void logout(connector.id)}>
+                      Se déconnecter
+                    </button>
+                  </>
+                )}
                 {connector.auth === 'oauth' &&
                   (connector.connected ? (
                     <>
@@ -213,6 +223,22 @@ export function StepSkills({ draft, update }: StepProps): React.JSX.Element {
             ))}
             <p className="field-hint">Les lectures passent directement. Toute autre action demande ton clic dans le chat.</p>
           </>
+        )}
+        {addingConnector ? (
+          <ConnectorForm
+            editing={null}
+            onCancel={() => setAddingConnector(false)}
+            onSaved={(connector) => {
+              setAddingConnector(false)
+              // Ajouté depuis cette fiche : il est aussitôt activé pour cet agent.
+              update({ tools: { ...tools, connectors: [...tools.connectors, connector.id] } })
+              void window.toolbox.connectors.list().then(setConnectors)
+            }}
+          />
+        ) : (
+          <button type="button" className="button connector-add" onClick={() => setAddingConnector(true)}>
+            + Ajouter un connecteur
+          </button>
         )}
       </fieldset>
 

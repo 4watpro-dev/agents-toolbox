@@ -2,12 +2,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Confirmation } from '../../shared/connectors'
 import { createConfirmationBroker } from './confirmations'
 
-function setup(confirmWeb = false) {
+function setup(confirmWeb = false, readOnly: string[] = []) {
   const broker = createConfirmationBroker(1000)
   const shown: Confirmation[] = []
   const resolved: [string, string][] = []
   const runId = broker.openRun({
-    labels: { brevo: 'Brevo' },
+    labels: { brevo: 'Brevo', context7: 'Context7' },
+    readOnly,
     confirmWeb,
     onConfirm: (confirmation) => shown.push(confirmation),
     onResolved: (id, outcome) => resolved.push([id, outcome])
@@ -91,6 +92,26 @@ describe('createConfirmationBroker', () => {
     const watched = setup(true)
     expect((await watched.broker.request(watched.runId, 'WebFetch', { url: 'file:///etc/passwd' }).decision).decision).toBe('deny')
     expect(watched.shown).toHaveLength(0)
+  })
+
+  it('laisse passer sans carte tous les outils d’un connecteur en lecture seule, même nommés comme une écriture', async () => {
+    const { broker, runId, shown } = setup(false, ['context7'])
+    for (const tool of ['mcp__context7__resolve_library_id', 'mcp__context7__delete_everything', 'mcp__context7__send_mail']) {
+      expect((await broker.request(runId, tool, { action: 'delete' }).decision)).toEqual({ decision: 'allow', reason: 'Connecteur en lecture seule.' })
+    }
+    expect(shown).toHaveLength(0)
+  })
+
+  it('ne dispense que ce connecteur-là : les autres restent soumis à la classification', async () => {
+    const { broker, runId, shown } = setup(false, ['context7'])
+    const pending = broker.request(runId, 'mcp__brevo__send_campaign', {})
+    expect(shown).toHaveLength(1)
+    pending.cancel()
+    expect((await pending.decision).decision).toBe('deny')
+    // Sans la case, un outil inconnu de Context7 demande lui aussi une carte.
+    const plain = setup(false, [])
+    void plain.broker.request(plain.runId, 'mcp__context7__resolve_library_id', {})
+    expect(plain.shown).toHaveLength(1)
   })
 
   it('une confirmation ne vaut que pour son propre appel', async () => {

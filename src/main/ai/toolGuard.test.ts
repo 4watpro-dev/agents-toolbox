@@ -176,6 +176,28 @@ describe('toolGuardArgs', () => {
   })
 })
 
+describe('connectorConfig, lecture seule', () => {
+  it('transmet au contrôle la clé exacte de chaque connecteur déclaré en lecture seule', () => {
+    const { readOnly, labels } = connectorConfig([
+      { name: 'Context7', url: 'https://mcp.context7.com/mcp', token: null, readOnly: true },
+      { name: 'Brevo', url: 'https://mcp.brevo.com/mcp', token: null },
+      { name: 'Context7', url: 'https://autre.example/mcp', token: null, readOnly: false }
+    ])
+    expect(labels).toEqual({ context7: 'Context7', brevo: 'Brevo', 'context7-2': 'Context7' })
+    expect(readOnly).toEqual(['context7'])
+    expect(connectorConfig([]).readOnly).toEqual([])
+  })
+})
+
+describe('connectorConfig, en-tête personnalisé', () => {
+  it('envoie le jeton tel quel dans l’en-tête choisi, toujours par variable', () => {
+    const { mcpConfig, env } = connectorConfig([{ name: 'Context7', url: 'https://mcp.context7.com/mcp', token: 'ctx7sk-x', tokenHeader: 'CONTEXT7_API_KEY' }])
+    expect(mcpConfig).not.toContain('ctx7sk-x')
+    expect(env).toEqual({ AT_MCP_TOKEN_0: 'ctx7sk-x' })
+    expect(JSON.parse(mcpConfig!).mcpServers.context7.headers).toEqual({ CONTEXT7_API_KEY: '${AT_MCP_TOKEN_0}' })
+  })
+})
+
 describe('connectorConfig', () => {
   it('ne produit rien sans connecteur', () => {
     expect(connectorConfig([]).mcpConfig).toBeNull()

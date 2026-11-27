@@ -18,7 +18,7 @@ import { createClient, resetClient } from './ai/client'
 import { classifyError } from './ai/errors'
 import { generateAgent } from './ai/generate'
 import { answerConfirmation } from './ai/toolBridge'
-import { getConnector, listConnectors, removeConnector, saveConnector } from './store/connectors'
+import { clearToken, getConnector, listConnectors, removeConnector, saveConnector } from './store/connectors'
 import { loginConnector, logoutConnector, offersOAuth } from './oauth/connectorLogin'
 import { OAuthError } from './oauth/mcpOAuth'
 import { openPanel } from './windows'
@@ -153,7 +153,14 @@ export function registerAiIpc(): void {
     const value = listConnectors().find((other) => other.id === connector.id)
     return value ? { ok: true, value } : { ok: false, message: 'Ce connecteur a été supprimé.' }
   })
-  ipcMain.handle(IPC.connectorsLogout, (_event, id: unknown) => logoutConnector(z.uuid().parse(id)))
+  // Se déconnecter vaut pour tous les connecteurs : OAuth révoque puis efface ses jetons,
+  // un connecteur à jeton perd le jeton collé. Dans les deux cas, le connecteur reste.
+  ipcMain.handle(IPC.connectorsLogout, async (_event, id: unknown) => {
+    const connector = getConnector(z.uuid().parse(id))
+    if (!connector) return
+    if (connector.auth === 'oauth') await logoutConnector(connector.id)
+    else clearToken(connector.id)
+  })
 
   ipcMain.handle(IPC.conversationsList, (_event, agentId: unknown) => listConversations(AgentIdSchema.parse(agentId)))
   ipcMain.handle(IPC.conversationsGet, (_event, agentId: unknown, id: unknown) =>
