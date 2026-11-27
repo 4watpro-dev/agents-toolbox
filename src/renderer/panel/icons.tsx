@@ -122,6 +122,39 @@ export function SidebarIcon(props: IconProps): React.JSX.Element {
   )
 }
 
+/** Recherche web : un globe. */
+export function GlobeIcon(props: IconProps): React.JSX.Element {
+  return (
+    <Icon {...props}>
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M3.5 12h17" />
+      <path d="M12 3.5c2.4 2.4 3.6 5.2 3.6 8.5s-1.2 6.1-3.6 8.5c-2.4-2.4-3.6-5.2-3.6-8.5S9.6 5.9 12 3.5Z" />
+    </Icon>
+  )
+}
+
+/** Lecture de pages : une fenêtre de navigateur. */
+export function BrowserIcon(props: IconProps): React.JSX.Element {
+  return (
+    <Icon {...props}>
+      <rect x="3.5" y="4.5" width="17" height="15" rx="2.5" />
+      <path d="M3.5 9h17" />
+      <path d="M7 6.8h.01M9.5 6.8h.01" />
+    </Icon>
+  )
+}
+
+/** Connecteur : une prise. */
+export function PlugIcon(props: IconProps): React.JSX.Element {
+  return (
+    <Icon {...props}>
+      <path d="M9 3.5v4M15 3.5v4" />
+      <path d="M6.5 7.5h11v3a5.5 5.5 0 0 1-11 0Z" />
+      <path d="M12 16v4.5" />
+    </Icon>
+  )
+}
+
 /** Historique : cadran avec une flèche qui revient en arrière. */
 export function HistoryIcon(props: IconProps): React.JSX.Element {
   return (

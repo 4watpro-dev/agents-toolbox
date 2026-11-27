@@ -44,3 +44,33 @@ export function Options<T extends string>({ label, options, labels, value, onCha
     </fieldset>
   )
 }
+
+/** Interrupteur : une case à cocher stylée, lue comme « switch » par VoiceOver. */
+export function Switch({ checked, label, onChange }: { checked: boolean; label: string; onChange(checked: boolean): void }): React.JSX.Element {
+  return (
+    <input
+      type="checkbox"
+      role="switch"
+      className="switch"
+      aria-label={label}
+      checked={checked}
+      onChange={(event) => onChange(event.target.checked)}
+    />
+  )
+}
+
+/** Bloc d'une étape : un titre, une phrase d'explication, puis son contenu. */
+export function Section({ title, hint, action, children }: { title: string; hint?: string; action?: ReactNode; children: ReactNode }): React.JSX.Element {
+  return (
+    <section className="skill-card">
+      <header className="skill-card-head">
+        <div>
+          <h3>{title}</h3>
+          {hint && <p>{hint}</p>}
+        </div>
+        {action}
+      </header>
+      {children}
+    </section>
+  )
+}

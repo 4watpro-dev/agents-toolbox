@@ -1,14 +1,71 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { EFFORTS, MODELS, type AgentDraft } from '../../../shared/agent'
 import type { Connector } from '../../../shared/connectors'
 import { composePrompt } from '../../../shared/systemPrompt'
 import { parseDomains, usesWebTools } from '../../../shared/tools'
 import { ConnectorForm } from '../ConnectorForm'
-import { FolderIcon } from '../icons'
-import { Field, Options, type StepProps } from './fields'
+import { BrowserIcon, FolderIcon, GlobeIcon, PlugIcon } from '../icons'
+import { Field, Options, Section, Switch, type StepProps } from './fields'
 
 const EFFORT_IDS = EFFORTS.map((effort) => effort.id)
 const EFFORT_LABELS = Object.fromEntries(EFFORTS.map((effort) => [effort.id, effort.label])) as Record<AgentDraft['effort'], string>
+
+/** Une ligne d'outil : icône, nom, description courte, et son réglage à droite. */
+function ToolRow({
+  icon,
+  title,
+  description,
+  control,
+  children
+}: {
+  icon: ReactNode
+  title: ReactNode
+  description: ReactNode
+  control: ReactNode
+  children?: ReactNode
+}): React.JSX.Element {
+  return (
+    <div className="skill-row">
+      <div className="skill-row-main">
+        <span className="skill-row-icon">{icon}</span>
+        <span className="skill-row-text">
+          <span className="skill-row-title">{title}</span>
+          <span className="skill-row-desc">{description}</span>
+        </span>
+        <span className="skill-row-control">{control}</span>
+      </div>
+      {children && <div className="skill-row-detail">{children}</div>}
+    </div>
+  )
+}
+
+const hostOf = (url: string): string => {
+  try {
+    return new URL(url).host
+  } catch {
+    return url
+  }
+}
+
+/** État d'un connecteur, en une pastille. */
+function ConnectorChips({ connector, signingIn }: { connector: Connector; signingIn: boolean }): React.JSX.Element {
+  let state: { text: string; tone: 'ok' | 'warn' | 'muted' }
+  if (connector.auth === 'oauth') {
+    state = signingIn
+      ? { text: 'Connexion…', tone: 'muted' }
+      : connector.connected
+        ? { text: 'Connecté', tone: 'ok' }
+        : { text: 'Connexion requise', tone: 'warn' }
+  } else {
+    state = connector.hasToken ? { text: 'Jeton', tone: 'ok' } : { text: 'Sans jeton', tone: 'muted' }
+  }
+  return (
+    <>
+      <span className={`status-chip is-${state.tone}`}>{state.text}</span>
+      {connector.readOnly && <span className="status-chip is-warn">Lecture seule</span>}
+    </>
+  )
+}
 
 export function StepSkills({ draft, update }: StepProps): React.JSX.Element {
   const [advanced, setAdvanced] = useState(draft.systemPromptOverride !== undefined)
@@ -17,22 +74,23 @@ export function StepSkills({ draft, update }: StepProps): React.JSX.Element {
   const [domainsText, setDomainsText] = useState(tools.allowedDomains.join('\n'))
   const [connectors, setConnectors] = useState<Connector[]>([])
   const [folderError, setFolderError] = useState<string | null>(null)
-
-  async function chooseFolder(): Promise<void> {
-    setFolderError(null)
-    const result = await window.toolbox.chooseKnowledgeFolder()
-    if (!result.ok) setFolderError(result.message)
-    else if (result.value) update({ tools: { ...tools, knowledgeFolder: result.value.path } })
-  }
+  /** Connexion OAuth lancée d'ici même : le navigateur s'ouvre, puis la liste se met à jour. */
+  const [signingIn, setSigningIn] = useState<string | null>(null)
+  const [loginError, setLoginError] = useState<{ id: string; message: string } | null>(null)
+  const [addingConnector, setAddingConnector] = useState(false)
 
   useEffect(() => {
     void window.toolbox.connectors.list().then(setConnectors)
   }, [])
 
-  /** Connexion OAuth lancée d'ici même : le navigateur s'ouvre, puis la liste se met à jour. */
-  const [signingIn, setSigningIn] = useState<string | null>(null)
-  const [loginError, setLoginError] = useState<{ id: string; message: string } | null>(null)
-  const [addingConnector, setAddingConnector] = useState(false)
+  const setTools = (patch: Partial<AgentDraft['tools']>): void => update({ tools: { ...tools, ...patch } })
+
+  async function chooseFolder(): Promise<void> {
+    setFolderError(null)
+    const result = await window.toolbox.chooseKnowledgeFolder()
+    if (!result.ok) setFolderError(result.message)
+    else if (result.value) setTools({ knowledgeFolder: result.value.path })
+  }
 
   async function login(id: string): Promise<void> {
     setSigningIn(id)
@@ -48,201 +106,186 @@ export function StepSkills({ draft, update }: StepProps): React.JSX.Element {
     setConnectors(await window.toolbox.connectors.list())
   }
 
+  const toggleConnector = (id: string, on: boolean): void =>
+    setTools({ connectors: on ? [...tools.connectors, id] : tools.connectors.filter((other) => other !== id) })
+
   return (
     <>
-      <Field label="Instructions métier" hint="Ce que l'agent doit savoir faire, et comment.">
-        <textarea
-          className="input"
-          rows={5}
-          maxLength={8000}
-          value={draft.instructions}
-          onChange={(event) => update({ instructions: event.target.value })}
-        />
-      </Field>
-
-      <Field label="Modèle">
-        <select className="input" value={draft.model} onChange={(event) => update({ model: event.target.value })}>
-          {MODELS.map((model) => (
-            <option key={model.id} value={model.id}>
-              {model.label} : {model.hint}
-            </option>
-          ))}
-        </select>
-      </Field>
-
-      <Options
-        label="Profondeur de réflexion"
-        options={EFFORT_IDS}
-        labels={EFFORT_LABELS}
-        value={draft.effort}
-        onChange={(effort) => update({ effort })}
-      />
-      <p className="field-hint">Plus de réflexion donne des réponses plus solides, mais plus lentes et plus chères.</p>
-
-      <Field label="Message d'accueil">
-        <textarea
-          className="input"
-          rows={2}
-          maxLength={400}
-          value={draft.greeting}
-          onChange={(event) => update({ greeting: event.target.value })}
-        />
-      </Field>
-
-      <fieldset className="options tools">
-        <legend className="field-label">Outils</legend>
-        <label className="tool-option">
-          <input
-            type="checkbox"
-            checked={tools.webSearch}
-            onChange={(event) => update({ tools: { ...tools, webSearch: event.target.checked } })}
+      <Section title="Rôle" hint="Ce que l'agent sait faire, et comment il t'accueille.">
+        <Field label="Instructions métier">
+          <textarea
+            className="input"
+            rows={5}
+            maxLength={8000}
+            placeholder="Ex. : tu relis mes textes, tu corriges l'orthographe et tu proposes des tournures plus vivantes."
+            value={draft.instructions}
+            onChange={(event) => update({ instructions: event.target.value })}
           />
-          Recherche web
-        </label>
-        <label className="tool-option">
-          <input
-            type="checkbox"
-            checked={tools.webFetch}
-            onChange={(event) => update({ tools: { ...tools, webFetch: event.target.checked } })}
+        </Field>
+        <Field label="Message d'accueil">
+          <textarea
+            className="input"
+            rows={2}
+            maxLength={400}
+            placeholder="Ex. : Salut ! Envoie-moi ton texte."
+            value={draft.greeting}
+            onChange={(event) => update({ greeting: event.target.value })}
           />
-          Lecture de pages web
-        </label>
+        </Field>
+      </Section>
+
+      <Section title="Moteur" hint="Plus de réflexion : des réponses plus solides, mais plus lentes et plus coûteuses.">
+        <Field label="Modèle">
+          <select className="input" value={draft.model} onChange={(event) => update({ model: event.target.value })}>
+            {MODELS.map((model) => (
+              <option key={model.id} value={model.id}>
+                {model.label} : {model.hint}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Options label="Profondeur de réflexion" options={EFFORT_IDS} labels={EFFORT_LABELS} value={draft.effort} onChange={(effort) => update({ effort })} />
+      </Section>
+
+      <Section title="Outils" hint="Aucun n'est actif par défaut : active seulement ce dont l'agent a besoin.">
+        <ToolRow
+          icon={<GlobeIcon size={17} />}
+          title="Recherche web"
+          description="Trouver des informations récentes."
+          control={<Switch label="Recherche web" checked={tools.webSearch} onChange={(webSearch) => setTools({ webSearch })} />}
+        />
+        <ToolRow
+          icon={<BrowserIcon size={17} />}
+          title="Lecture de pages"
+          description="Ouvrir et lire une page précise."
+          control={<Switch label="Lecture de pages" checked={tools.webFetch} onChange={(webFetch) => setTools({ webFetch })} />}
+        />
         {usesWebTools(tools) && (
-          <>
-            <Field
-              label="Domaines autorisés (optionnel)"
-              hint="Un par ligne, sous-domaines compris. Ces sites s'ouvrent sans te demander. Pour tout autre site, tu vois l'adresse complète et tu confirmes ; dans une tâche planifiée ou une équipe, il est refusé."
-            >
+          <div className="skill-subpanel">
+            <Field label="Sites autorisés (optionnel)" hint="Un par ligne. Ils s'ouvrent sans te demander ; les autres pages te sont soumises.">
               <textarea
                 className="input"
-                rows={3}
+                rows={2}
                 spellCheck={false}
                 placeholder="brevo.com"
                 value={domainsText}
                 onChange={(event) => {
                   setDomainsText(event.target.value)
-                  update({ tools: { ...tools, allowedDomains: parseDomains(event.target.value) } })
+                  setTools({ allowedDomains: parseDomains(event.target.value) })
                 }}
               />
             </Field>
-            <p className="field-hint">
-              Avec ton abonnement, c'est compris dans ton forfait. Avec une clé API, chaque recherche coûte 10 $ les 1 000, plus les jetons
-              des pages lues.
-            </p>
-          </>
-        )}
-        <span className="field-label tools-group">Dossier de documents</span>
-        {tools.knowledgeFolder ? (
-          <div className="knowledge-folder">
-            <FolderIcon size={18} />
-            <span className="knowledge-path" title={tools.knowledgeFolder}>
-              {tools.knowledgeFolder.replace(/^\/Users\/[^/]+/, '~')}
-            </span>
-            <button type="button" className="button" onClick={() => void chooseFolder()}>
-              Changer
-            </button>
-            <button type="button" className="button" onClick={() => update({ tools: { ...tools, knowledgeFolder: null } })}>
-              Retirer
-            </button>
+            <details className="skill-more">
+              <summary>En savoir plus</summary>
+              <p>Les sous-domaines sont compris. Dans une tâche planifiée ou une équipe, une page hors de la liste est refusée, faute de quelqu'un pour confirmer.</p>
+              <p>Avec ton abonnement, c'est compris dans ton forfait. Avec une clé API, chaque recherche coûte 10 $ les 1 000, plus les jetons des pages lues.</p>
+            </details>
           </div>
-        ) : (
-          <button type="button" className="button knowledge-choose" onClick={() => void chooseFolder()}>
-            Choisir un dossier…
-          </button>
         )}
-        {folderError && (
-          <p className="form-error" role="alert">
-            {folderError}
-          </p>
+        <ToolRow
+          icon={<FolderIcon size={17} />}
+          title="Dossier de documents"
+          description={
+            tools.knowledgeFolder ? (
+              <span className="knowledge-path" title={tools.knowledgeFolder}>
+                {tools.knowledgeFolder.replace(/^\/Users\/[^/]+/, '~')}
+              </span>
+            ) : (
+              'Lire tes fichiers (texte, PDF, images), sans rien y modifier.'
+            )
+          }
+          control={
+            tools.knowledgeFolder ? (
+              <span className="skill-row-buttons">
+                <button type="button" className="button button-small" onClick={() => void chooseFolder()}>
+                  Changer
+                </button>
+                <button type="button" className="button button-small" onClick={() => setTools({ knowledgeFolder: null })}>
+                  Retirer
+                </button>
+              </span>
+            ) : (
+              <button type="button" className="button button-small" onClick={() => void chooseFolder()}>
+                Choisir…
+              </button>
+            )
+          }
+        >
+          {folderError && (
+            <p className="form-error" role="alert">
+              {folderError}
+            </p>
+          )}
+        </ToolRow>
+      </Section>
+
+      <Section
+        title="Connecteurs"
+        hint="Les lectures passent seules ; toute autre action demande ton clic dans le chat."
+        action={
+          !addingConnector && (
+            <button type="button" className="button button-small" onClick={() => setAddingConnector(true)}>
+              + Ajouter
+            </button>
+          )
+        }
+      >
+        {addingConnector && (
+          <div className="skill-subpanel">
+            <ConnectorForm
+              editing={null}
+              onCancel={() => setAddingConnector(false)}
+              onSaved={(connector) => {
+                setAddingConnector(false)
+                // Ajouté depuis cette fiche : il est aussitôt activé pour cet agent.
+                setTools({ connectors: [...tools.connectors, connector.id] })
+                void window.toolbox.connectors.list().then(setConnectors)
+              }}
+            />
+          </div>
         )}
-        <p className="field-hint">
-          L'agent cherche et lit les fichiers utiles de ce dossier (texte, PDF, images), sans jamais rien y modifier ni lire ailleurs. Avec
-          ton abonnement uniquement. Le chemin n'est pas inclus quand tu exportes l'agent.
-        </p>
-        <span className="field-label tools-group">Connecteurs MCP</span>
-        {connectors.length === 0 ? (
-          <p className="field-hint">Aucun connecteur pour l'instant.</p>
-        ) : (
-          <>
-            {connectors.map((connector) => (
-              <div key={connector.id} className="connector-option">
-                <label className="tool-option">
-                  <input
-                    type="checkbox"
-                    checked={tools.connectors.includes(connector.id)}
-                    onChange={(event) =>
-                      update({
-                        tools: {
-                          ...tools,
-                          connectors: event.target.checked
-                            ? [...tools.connectors, connector.id]
-                            : tools.connectors.filter((id) => id !== connector.id)
-                        }
-                      })
-                    }
-                  />
+        {connectors.length === 0 && !addingConnector && <p className="skill-empty">Aucun connecteur pour l'instant.</p>}
+        {connectors.map((connector) => {
+          const enabled = tools.connectors.includes(connector.id)
+          const canLogout = connector.auth === 'oauth' ? connector.connected : connector.hasToken
+          return (
+            <ToolRow
+              key={connector.id}
+              icon={<PlugIcon size={17} />}
+              title={
+                <>
                   {connector.name}
-                </label>
-                {connector.auth === 'token' && connector.hasToken && (
-                  <>
-                    <span className="connector-status is-on">Jeton enregistré</span>
-                    <button type="button" className="button button-small" disabled={signingIn !== null} onClick={() => void logout(connector.id)}>
+                  <ConnectorChips connector={connector} signingIn={signingIn === connector.id} />
+                </>
+              }
+              description={
+                <>
+                  {hostOf(connector.url)}
+                  {connector.auth === 'oauth' && !connector.connected && (
+                    <button type="button" className="link-button is-accent" disabled={signingIn !== null} onClick={() => void login(connector.id)}>
+                      {signingIn === connector.id ? 'Termine dans ton navigateur…' : 'Se connecter'}
+                    </button>
+                  )}
+                  {canLogout && (
+                    <button type="button" className="link-button" disabled={signingIn !== null} onClick={() => void logout(connector.id)}>
                       Se déconnecter
                     </button>
-                  </>
-                )}
-                {connector.auth === 'oauth' &&
-                  (connector.connected ? (
-                    <>
-                      <span className="connector-status is-on">Connecté</span>
-                      <button type="button" className="button button-small" disabled={signingIn !== null} onClick={() => void logout(connector.id)}>
-                        Se déconnecter
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <span className="connector-status">
-                        {signingIn === connector.id ? 'Termine la connexion dans ton navigateur…' : 'Connexion requise'}
-                      </span>
-                      <button
-                        type="button"
-                        className={tools.connectors.includes(connector.id) ? 'button button-primary button-small' : 'button button-small'}
-                        disabled={signingIn !== null}
-                        onClick={() => void login(connector.id)}
-                      >
-                        {signingIn === connector.id ? 'Connexion…' : 'Se connecter'}
-                      </button>
-                    </>
-                  ))}
-                {loginError?.id === connector.id && (
-                  <p className="form-error connector-option-error" role="alert">
-                    {loginError.message}
-                  </p>
-                )}
-              </div>
-            ))}
-            <p className="field-hint">Les lectures passent directement. Toute autre action demande ton clic dans le chat.</p>
-          </>
-        )}
-        {addingConnector ? (
-          <ConnectorForm
-            editing={null}
-            onCancel={() => setAddingConnector(false)}
-            onSaved={(connector) => {
-              setAddingConnector(false)
-              // Ajouté depuis cette fiche : il est aussitôt activé pour cet agent.
-              update({ tools: { ...tools, connectors: [...tools.connectors, connector.id] } })
-              void window.toolbox.connectors.list().then(setConnectors)
-            }}
-          />
-        ) : (
-          <button type="button" className="button connector-add" onClick={() => setAddingConnector(true)}>
-            + Ajouter un connecteur
-          </button>
-        )}
-      </fieldset>
+                  )}
+                </>
+              }
+              control={<Switch label={`Activer ${connector.name} pour cet agent`} checked={enabled} onChange={(on) => toggleConnector(connector.id, on)} />}
+            >
+              {loginError?.id === connector.id && (
+                <p className="form-error" role="alert">
+                  {loginError.message}
+                </p>
+              )}
+            </ToolRow>
+          )
+        })}
+      </Section>
 
-      <details className="advanced" open={advanced} onToggle={(event) => setAdvanced(event.currentTarget.open)}>
+      <details className="advanced skill-card" open={advanced} onToggle={(event) => setAdvanced(event.currentTarget.open)}>
         <summary>Mode avancé : prompt système</summary>
         <textarea
           className="input input-code"
