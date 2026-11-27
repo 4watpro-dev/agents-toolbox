@@ -57,3 +57,28 @@
     animation: none;
   }
 }
+
+/* Bras gauche : il salue quand l'agent est content. */
+.avatar-arm {
+  transform-box: view-box;
+  transform-origin: 34px 46px;
+}
+
+.avatar-arm-wave {
+  animation: avatar-wave 0.9s ease-in-out 2;
+}
+
+@keyframes avatar-wave {
+  25% {
+    transform: rotate(-16deg);
+  }
+  75% {
+    transform: rotate(10deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .avatar-arm-wave {
+    animation: none;
+  }
+}

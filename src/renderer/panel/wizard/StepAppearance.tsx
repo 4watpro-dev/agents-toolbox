@@ -3,12 +3,11 @@ import {
   ACCESSORIES,
   AVATAR_STATES,
   EYE_STYLES,
-  GHOST_SHAPES,
   type AvatarConfig,
   type AvatarState
 } from '../../../shared/avatar'
 import { Avatar } from '../../avatar/Avatar'
-import { ACCESSORY_LABELS, EYE_LABELS, SHAPE_LABELS } from '../../avatar/labels'
+import { ACCESSORY_LABELS, EYE_LABELS } from '../../avatar/labels'
 import { ColorPicker } from './ColorPicker'
 import { Options, type StepProps } from './fields'
 
@@ -89,7 +88,7 @@ export function StepAppearance({ draft, update }: StepProps): React.JSX.Element 
         </select>
       </div>
       <ColorRow
-        label="Couleur du fantôme"
+        label="Couleur de l'agent"
         swatches={BODY_SWATCHES}
         value={draft.avatar.bodyColor}
         onChange={(bodyColor) => set({ bodyColor })}
@@ -99,13 +98,6 @@ export function StepAppearance({ draft, update }: StepProps): React.JSX.Element 
         swatches={GLOW_SWATCHES}
         value={draft.avatar.glowColor}
         onChange={(glowColor) => set({ glowColor })}
-      />
-      <Options
-        label="Forme"
-        options={GHOST_SHAPES}
-        labels={SHAPE_LABELS}
-        value={draft.avatar.shape}
-        onChange={(shape) => set({ shape })}
       />
       <Options
         label="Yeux"

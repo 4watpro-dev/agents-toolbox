@@ -7,8 +7,7 @@ import {
   type Accessory,
   type AvatarConfig,
   type AvatarState,
-  type EyeStyle,
-  type GhostShape
+  type EyeStyle
 } from '../../shared/avatar'
 import { EXPRESSIONS } from './expressions'
 import { useBlink } from './useBlink'
@@ -16,36 +15,15 @@ import './avatar.css'
 
 const CX = 60
 const CY = 58
-const EYE_Y = 42
+const EYE_Y = 48
 const EYE_OFFSET = 11
-const BODY_TOP = 14
+/** Corps : une sphère. */
+const RADIUS = 40
+const BODY_TOP = CY - RADIUS
 
-const BODIES: Record<GhostShape, string> = {
-  drop: 'M60 14 C85 14 104 33 104 57 C104 78 84 92 63.5 104.5 Q60 106.5 56.5 104.5 C36 92 16 78 16 57 C16 33 35 14 60 14 Z',
-  classic:
-    'M60 14 C85 14 104 33 104 58 L104 92 Q96.7 108 89.3 92 Q82 80 74.7 92 Q67.3 108 60 92 Q52.7 80 45.3 92 Q38 108 30.7 92 Q23.3 80 16 92 L16 58 C16 33 35 14 60 14 Z',
-  round: 'M60 14 C85 14 104 34 104 59 C104 84 85 104 60 104 C35 104 16 84 16 59 C16 34 35 14 60 14 Z',
-  // Drap : dôme en demi-cercle, côtés droits, bas plat aux coins arrondis.
-  sheet: 'M22 51 A38 38 0 0 1 98 51 L98 98 Q98 107 89 107 L31 107 Q22 107 22 98 Z',
-  // Audacieux : dôme, flancs qui s'évasent en deux pointes, bas en double arche avec une petite pointe au centre.
-  bold: 'M60 14 C82 14 98 30 98 52 C98 72 100 92 105 104 Q106 108 102 107.5 C94 99 82 90 72 90 C66 90 62 92 60 96 C58 92 54 90 48 90 C38 90 26 99 18 107.5 Q14 108 15 104 C20 92 22 72 22 52 C22 30 38 14 60 14 Z'
-}
-
-/**
- * Bord du drap relevé à gauche : il part du flanc, forme une bosse, puis redescend
- * en S jusqu'au bas, aux deux tiers de la largeur. Dessous, on voit l'envers, plus sombre.
- */
-const SHEET_EDGE = 'M22 90 C27 86 32 84.4 36.4 84.4 C44 84.4 50 89 56 95 C62 101 68 106 75 107'
-const SHEET_FOLD = `${SHEET_EDGE} L75 112 L16 112 L16 90 Z`
-
-/** Reflet coloré du bas, posé sur la partie la plus large de chaque forme. */
-const REFLECTIONS: Record<GhostShape, { cy: number; rx: number; ry: number }> = {
-  drop: { cy: 94, rx: 30, ry: 20 },
-  classic: { cy: 102, rx: 48, ry: 20 },
-  round: { cy: 104, rx: 40, ry: 22 },
-  sheet: { cy: 104, rx: 30, ry: 16 },
-  bold: { cy: 98, rx: 40, ry: 16 }
-}
+/** Bras en nageoire, dessinés derrière le corps : le gauche levé, le droit le long du flanc. */
+const LEFT_ARM = { cx: 24, cy: 40, rx: 11, ry: 16.5, rotate: -42 }
+const RIGHT_ARM = { cx: 96, cy: 76, rx: 9, ry: 13.5, rotate: -36 }
 
 const SPRING = { type: 'spring', stiffness: 260, damping: 20 } as const
 
@@ -82,15 +60,24 @@ export function Avatar({
   const uid = useId()
   const palette = glassPalette(config.bodyColor, config.glowColor)
   const ink = palette.ink
-  const body = BODIES[config.shape]
-  const reflection = REFLECTIONS[config.shape]
   const fillId = `${uid}-fill`
   const reflectionId = `${uid}-reflection`
   const glossId = `${uid}-gloss`
+  const rimId = `${uid}-rim`
+  const armId = `${uid}-arm`
   const groundId = `${uid}-ground`
-  const foldId = `${uid}-fold`
   const auraId = `${uid}-aura`
   const clipId = `${uid}-body`
+  const arm = (shape: typeof LEFT_ARM): React.JSX.Element => (
+    <ellipse
+      cx={shape.cx}
+      cy={shape.cy}
+      rx={shape.rx}
+      ry={shape.ry}
+      transform={`rotate(${shape.rotate} ${shape.cx} ${shape.cy})`}
+      fill={`url(#${armId})`}
+    />
+  )
 
   return (
     <MotionConfig reducedMotion="user">
@@ -104,32 +91,36 @@ export function Avatar({
         aria-hidden={label ? undefined : true}
       >
         {/*
-          Verre teinté, sans filtre de flou (coûteux à chaque image animée) :
+          Sphère brillante, sans filtre de flou (coûteux à chaque image animée) :
           tout le relief vient de dégradés.
         */}
         <defs>
-          {/* Cœur foncé derrière les yeux, bord givré plus clair. */}
-          <radialGradient id={fillId} cx="0.5" cy="0.42" r="0.6">
+          {/* Teinte profonde en haut à gauche, qui s'éclaircit vers le bas. */}
+          <linearGradient id={fillId} x1="0.2" y1="0" x2="0.75" y2="1">
             <stop offset="0" stopColor={palette.core} />
-            <stop offset="0.5" stopColor={palette.body} />
-            <stop offset="0.82" stopColor={palette.edge} />
-            <stop offset="1" stopColor={mixColor(palette.edge, '#ffffff', 0.35)} />
-          </radialGradient>
-          {/* Lumière qui traverse le verre et ressort par le bas. */}
+            <stop offset="0.45" stopColor={palette.body} />
+            <stop offset="1" stopColor={mixColor(palette.reflection, '#ffffff', 0.15)} />
+          </linearGradient>
+          {/* Lumière du socle, qui remonte par le bas de la sphère. */}
           <radialGradient id={reflectionId}>
-            <stop offset="0.35" stopColor={palette.reflection} stopOpacity="0.95" />
-            <stop offset="0.7" stopColor={palette.reflection} stopOpacity="0.45" />
+            <stop offset="0.2" stopColor={palette.reflection} stopOpacity="0.95" />
+            <stop offset="0.65" stopColor={palette.reflection} stopOpacity="0.5" />
             <stop offset="1" stopColor={palette.reflection} stopOpacity="0" />
           </radialGradient>
-          {/* Voile brillant du haut. */}
+          {/* Liseré lumineux du bord, teinté par la lueur. */}
+          <radialGradient id={rimId}>
+            <stop offset="0.8" stopColor={palette.edge} stopOpacity="0" />
+            <stop offset="0.96" stopColor={palette.edge} stopOpacity="0.55" />
+            <stop offset="1" stopColor={mixColor(palette.edge, '#ffffff', 0.4)} stopOpacity="0.8" />
+          </radialGradient>
+          {/* Reflet doux du haut. */}
           <radialGradient id={glossId}>
-            <stop offset="0" stopColor="#ffffff" stopOpacity="0.42" />
+            <stop offset="0" stopColor="#ffffff" stopOpacity="0.55" />
             <stop offset="1" stopColor="#ffffff" stopOpacity="0" />
           </radialGradient>
-          {/* Envers du drap : ombré sous le bord, un peu moins vers le bas. */}
-          <linearGradient id={foldId} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stopColor={mixColor(palette.core, '#000000', 0.55)} stopOpacity="0.95" />
-            <stop offset="1" stopColor={mixColor(palette.core, '#000000', 0.25)} stopOpacity="0.9" />
+          <linearGradient id={armId} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor={mixColor(palette.body, palette.edge, 0.25)} />
+            <stop offset="1" stopColor={mixColor(palette.body, palette.core, 0.6)} />
           </linearGradient>
           {/* Halo coloré au sol, à la place d'une ombre grise. */}
           <radialGradient id={groundId}>
@@ -142,11 +133,11 @@ export function Avatar({
             <stop offset="1" stopColor={config.glowColor} stopOpacity="0" />
           </radialGradient>
           <clipPath id={clipId}>
-            <path d={body} />
+            <circle cx={CX} cy={CY} r={RADIUS} />
           </clipPath>
         </defs>
 
-        {groundShadow && <ellipse cx={CX} cy={112} rx={34} ry={8} fill={`url(#${groundId})`} />}
+        {groundShadow && <ellipse cx={CX} cy={110} rx={34} ry={8} fill={`url(#${groundId})`} />}
 
         <g className={floating ? 'avatar-float' : undefined}>
           <motion.g
@@ -164,30 +155,38 @@ export function Avatar({
               />
             )}
 
-            <path d={body} fill={`url(#${fillId})`} />
+            {/* Bras derrière le corps ; le gauche salue quand l'agent est content. */}
+            <g className={state === 'happy' ? 'avatar-arm avatar-arm-wave' : 'avatar-arm'}>{arm(LEFT_ARM)}</g>
+            {arm(RIGHT_ARM)}
+
+            <circle cx={CX} cy={CY} r={RADIUS} fill={`url(#${fillId})`} />
             <g clipPath={`url(#${clipId})`}>
+              <ellipse cx={CX + 6} cy={CY + RADIUS - 2} rx={34} ry={20} fill={`url(#${reflectionId})`} />
+              <circle cx={CX} cy={CY} r={RADIUS} fill={`url(#${rimId})`} />
               <ellipse
-                cx={CX}
-                cy={reflection.cy}
-                rx={reflection.rx}
-                ry={reflection.ry}
-                fill={`url(#${reflectionId})`}
+                cx={CX - 14}
+                cy={BODY_TOP + 15}
+                rx={20}
+                ry={11}
+                transform={`rotate(-28 ${CX - 14} ${BODY_TOP + 15})`}
+                fill={`url(#${glossId})`}
               />
-              {config.shape === 'sheet' && (
-                <>
-                  <path d={SHEET_FOLD} fill={`url(#${foldId})`} />
-                  <path d={SHEET_EDGE} fill="none" stroke="#ffffff" strokeOpacity={0.28} strokeWidth={1.2} />
-                </>
-              )}
-              <ellipse cx={CX} cy={BODY_TOP + 12} rx={34} ry={16} fill={`url(#${glossId})`} />
-              {/* Arête du verre : un liseré clair, visible seulement à l'intérieur. */}
-              <path d={body} fill="none" stroke="#ffffff" strokeOpacity={0.4} strokeWidth={2.4} />
+              {/* Point de lumière net, comme sur une bille. */}
+              <ellipse
+                cx={CX - 22}
+                cy={BODY_TOP + 17}
+                rx={4.5}
+                ry={2.6}
+                transform={`rotate(-38 ${CX - 22} ${BODY_TOP + 17})`}
+                fill="#ffffff"
+                opacity={0.75}
+              />
             </g>
 
             {expression.cheeks && (
               <>
-                <ellipse cx={CX - 20} cy={53} rx={5} ry={3} fill="#ff8fa3" opacity={0.6} />
-                <ellipse cx={CX + 20} cy={53} rx={5} ry={3} fill="#ff8fa3" opacity={0.6} />
+                <ellipse cx={CX - 20} cy={59} rx={5} ry={3} fill="#ff8fa3" opacity={0.6} />
+                <ellipse cx={CX + 20} cy={59} rx={5} ry={3} fill="#ff8fa3" opacity={0.6} />
               </>
             )}
 
@@ -337,7 +336,7 @@ function AccessoryLayer({ accessory, ink, clipId }: AccessoryLayerProps): React.
         </g>
       )
     case 'bowtie': {
-      const y = 76
+      const y = 84
       return (
         <g fill="#d64550">
           <path d={`M${CX} ${y} L${CX - 13} ${y - 7} Q${CX - 15} ${y} ${CX - 13} ${y + 7} Z`} />

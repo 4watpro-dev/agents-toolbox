@@ -5,13 +5,13 @@ export interface Expression {
   gaze: { x: number; y: number }
   leftEye: number
   rightEye: number
-  /** `arc` : deux arcs souriants. `closed` : paupières baissées, le fantôme dort. */
+  /** `arc` : deux arcs souriants. `closed` : paupières baissées, l'agent dort. */
   eyeShape: 'open' | 'arc' | 'closed'
   blinks: boolean
   head: { y: number; rotate: number }
-  /** Aura derrière le fantôme : fixe à l'écoute, pulsée pendant la réflexion. */
+  /** Aura derrière l'agent : fixe à l'écoute, pulsée pendant la réflexion. */
   aura: 'off' | 'on' | 'pulse'
-  /** Le fantôme devient plus transparent. */
+  /** L'agent devient plus transparent. */
   dimmed?: boolean
   mouth?: string
   brows?: { left: string; right: string }
@@ -54,7 +54,7 @@ export const EXPRESSIONS: Record<AvatarState, Expression> = {
     blinks: false,
     head: { y: -2, rotate: 0 },
     aura: 'on',
-    mouth: 'M54 56 Q60 62 66 56',
+    mouth: 'M54 62 Q60 68 66 62',
     cheeks: true
   },
   surprised: {
@@ -65,7 +65,7 @@ export const EXPRESSIONS: Record<AvatarState, Expression> = {
     blinks: false,
     head: { y: -3, rotate: 0 },
     aura: 'on',
-    mouth: 'M57 60 a3 3.5 0 1 0 6 0 a3 3.5 0 1 0 -6 0'
+    mouth: 'M57 66 a3 3.5 0 1 0 6 0 a3 3.5 0 1 0 -6 0'
   },
   confused: {
     gaze: { x: -2, y: 0 },
@@ -75,8 +75,8 @@ export const EXPRESSIONS: Record<AvatarState, Expression> = {
     blinks: true,
     head: { y: 0, rotate: -7 },
     aura: 'off',
-    mouth: 'M54 60 q3 -3 6 0 t6 0',
-    brows: { left: 'M41 29 L52 27', right: 'M68 31 L79 33' }
+    mouth: 'M54 66 q3 -3 6 0 t6 0',
+    brows: { left: 'M41 35 L52 33', right: 'M68 37 L79 39' }
   },
   sorry: {
     gaze: { x: 0, y: 3 },
@@ -87,10 +87,10 @@ export const EXPRESSIONS: Record<AvatarState, Expression> = {
     head: { y: 3, rotate: 0 },
     aura: 'off',
     dimmed: true,
-    mouth: 'M54 62 Q60 56 66 62',
-    brows: { left: 'M42 33 L52 29', right: 'M68 29 L78 33' }
+    mouth: 'M54 68 Q60 62 66 68',
+    brows: { left: 'M42 39 L52 35', right: 'M68 35 L78 39' }
   },
-  // Personne au clavier depuis un moment : le fantôme s'assoupit.
+  // Personne au clavier depuis un moment : l'agent s'assoupit.
   sleepy: {
     gaze: { x: 0, y: 2 },
     leftEye: 1,
@@ -100,6 +100,6 @@ export const EXPRESSIONS: Record<AvatarState, Expression> = {
     head: { y: 3, rotate: 6 },
     aura: 'off',
     dimmed: true,
-    mouth: 'M58 58 Q60 59.5 62 58'
+    mouth: 'M58 64 Q60 65.5 62 64'
   }
 }
